@@ -1,0 +1,124 @@
+from fastapi import APIRouter, HTTPException, Depends, status, Request
+from models.notification import NotificationCreate, NotificationResponse, NotificationUpdate
+from utils.auth import get_current_user
+from datetime import datetime
+from bson import ObjectId
+
+router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+
+def get_db(request: Request):
+    return request.app.mongodb
+
+def parse_object_id(id_str: str) -> ObjectId:
+    try:
+        return ObjectId(id_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+def build_notification_response(notification) -> NotificationResponse:
+    return NotificationResponse(
+        id=str(notification["_id"]),
+        recipient_id=notification["recipient_id"],
+        actor_id=notification["actor_id"],
+        actor_username=notification.get("actor_username", ""),
+        actor_display_name=notification.get("actor_display_name", ""),
+        type=notification["type"],
+        post_id=notification.get("post_id"),
+        comment_id=notification.get("comment_id"),
+        message=notification["message"],
+        is_read=notification.get("is_read", False),
+        created_at=notification["created_at"],
+        updated_at=notification.get("updated_at"),
+    )
+
+@router.get("/", response_model=list[NotificationResponse])
+async def get_notifications(request: Request, user_id: str = Depends(get_current_user)):
+    db = get_db(request)
+    cursor = db.notifications.find({"recipient_id": user_id}).sort("created_at", -1)
+    notifications = await cursor.to_list(length=100)
+    return [build_notification_response(n) for n in notifications]
+
+@router.get("/unread/count")
+async def get_unread_count(request: Request, user_id: str = Depends(get_current_user)):
+    db = get_db(request)
+    count = await db.notifications.count_documents({"recipient_id": user_id, "is_read": False})
+    return {"unread_count": count}
+
+@router.put("/{notification_id}", response_model=NotificationResponse)
+async def update_notification(
+    notification_id: str,
+    payload: NotificationUpdate,
+    request: Request,
+    user_id: str = Depends(get_current_user)
+):
+    db = get_db(request)
+    notification = await db.notifications.find_one({"_id": parse_object_id(notification_id)})
+    
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    if notification["recipient_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    
+    updates = {"updated_at": datetime.utcnow()}
+    if payload.is_read is not None:
+        updates["is_read"] = payload.is_read
+    
+    await db.notifications.update_one(
+        {"_id": notification["_id"]},
+        {"$set": updates}
+    )
+    
+    notification = await db.notifications.find_one({"_id": notification["_id"]})
+    return build_notification_response(notification)
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_notification(
+    notification_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user)
+):
+    db = get_db(request)
+    notification = await db.notifications.find_one({"_id": parse_object_id(notification_id)})
+    
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    if notification["recipient_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    
+    await db.notifications.delete_one({"_id": notification["_id"]})
+    return None
+
+@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_notifications(
+    request: Request,
+    user_id: str = Depends(get_current_user)
+):
+    db = get_db(request)
+    await db.notifications.delete_many({"recipient_id": user_id})
+    return None
+
+@router.post("/", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
+async def create_notification(payload: NotificationCreate, request: Request):
+    """내부용 알림 생성 엔드포인트 (인증 없음)"""
+    db = get_db(request)
+    
+    notification_doc = {
+        "recipient_id": payload.recipient_id,
+        "actor_id": payload.actor_id,
+        "actor_username": payload.actor_username,
+        "actor_display_name": payload.actor_display_name,
+        "type": payload.type,
+        "post_id": payload.post_id,
+        "comment_id": payload.comment_id,
+        "message": payload.message,
+        "is_read": False,
+        "created_at": datetime.utcnow(),
+        "updated_at": None,
+    }
+    
+    result = await db.notifications.insert_one(notification_doc)
+    notification_doc["_id"] = result.inserted_id
+    
+    return build_notification_response(notification_doc)
