@@ -21,16 +21,11 @@ load_dotenv()
 
 app = FastAPI(title="SNS API")
 
-# CORS 설정 - Vercel 프론트엔드 도메인 명시적으로 허용
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://my-sns-project.vercel.app",
-        "*"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # 모든 도메인 허용
+    allow_credentials=False,  # 와일드카드 사용 시 credentials는 False로
     allow_methods=["*"],
     allow_headers=["*"],
 )
