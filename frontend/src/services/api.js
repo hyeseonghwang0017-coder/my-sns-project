@@ -20,8 +20,26 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // 명시적으로 Content-Type 설정 (폼데이터가 아닌 JSON)
+  if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
   return config;
 });
+
+// 에러 응답 처리
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error Details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    return Promise.reject(error);
+  }
+);
 
 // 회원가입
 export const signup = async (userData) => {

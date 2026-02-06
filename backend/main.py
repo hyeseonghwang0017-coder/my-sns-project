@@ -25,7 +25,7 @@ app = FastAPI(title="SNS API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 모든 도메인 허용
-    allow_credentials=False,  # 와일드카드 사용 시 credentials는 False로
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
