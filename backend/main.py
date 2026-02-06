@@ -32,6 +32,8 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     mongo_uri = os.getenv("MONGO_URI") or os.getenv("MONGODB_URL")
+    if not mongo_uri:
+        raise ValueError("MONGO_URI environment variable is not set!")
     db_name = os.getenv("DATABASE_NAME", "sns_db")
     app.mongodb_client = AsyncIOMotorClient(mongo_uri)
     app.mongodb = app.mongodb_client[db_name]
