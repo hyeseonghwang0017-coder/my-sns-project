@@ -4,6 +4,9 @@ const API_URL = process.env.REACT_APP_API_URL
   ? `${process.env.REACT_APP_API_URL}/api`
   : 'http://127.0.0.1:8000/api';
 
+console.log('API_URL:', API_URL);
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -22,8 +25,18 @@ api.interceptors.request.use((config) => {
 
 // 회원가입
 export const signup = async (userData) => {
-  const response = await api.post('/users/signup', userData);
-  return response.data;
+  console.log('Signup request to:', API_URL + '/users/signup');
+  console.log('Signup data:', userData);
+  try {
+    const response = await api.post('/users/signup', userData);
+    console.log('Signup response:', response);
+    return response.data;
+  } catch (error) {
+    console.error('Signup error:', error);
+    console.error('Error response:', error.response);
+    console.error('Error data:', error.response?.data);
+    throw error;
+  }
 };
 
 // 로그인
