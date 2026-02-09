@@ -17,15 +17,19 @@ from routes.uploads import router as uploads_router
 from routes.profiles import router as profiles_router
 from routes.notifications import router as notifications_router
 
-load_dotenv()
-
 app = FastAPI(title="SNS API")
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 도메인 허용
-    allow_credentials=False,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "https://my-sns-project.vercel.app",
+        "https://my-sns-project-g1msw0895-hyeseongs-projects-6e70a58d.vercel.app",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
