@@ -27,11 +27,13 @@ app.add_middleware(
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "https://my-sns-project.vercel.app",
-        "https://my-sns-project-g1msw0895-hyeseongs-projects-6e70a58d.vercel.app",
+        "https://*.vercel.app",  # Vercel preview deployments
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    expose_headers=["Content-Type", "Authorization"],
+    max_age=3600,
 )
 
 @app.on_event("startup")
