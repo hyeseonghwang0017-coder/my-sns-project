@@ -164,7 +164,7 @@ async def get_guestbook(user_id: str, request: Request):
             author_id=entry["author_id"],
             author_username=author_map.get(entry["author_id"], {}).get("username", entry.get("author_username", "")),
             author_display_name=author_map.get(entry["author_id"], {}).get("display_name", entry.get("author_display_name", "")),
-            author_display_name_color=author_map.get(entry["author_id"], {}).get("display_name_color", entry.get("author_display_name_color")),
+            author_display_name_color=author_map.get(entry["author_id"], {}).get("display_name_color", "#000000"),
             author_profile_image=author_map.get(entry["author_id"], {}).get("profile_image", entry.get("author_profile_image")),
             content=entry["content"],
             created_at=entry["created_at"],
