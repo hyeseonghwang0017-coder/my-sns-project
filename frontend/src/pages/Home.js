@@ -12,6 +12,7 @@ import {
   updateComment,
   deleteComment,
   uploadImage,
+  getAllUsers,
 } from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
@@ -96,7 +97,7 @@ function CommentItem({
                   userId={comment.author_id}
                   size="36px"
                 />
-                <strong>{comment.author_display_name || comment.author_username}</strong>
+                <strong style={{ color: comment.author_display_name_color || '#000000' }}>{comment.author_display_name || comment.author_username}</strong>
               </div>
               <span style={{ marginLeft: '36px', color: '#9aa0a6', fontSize: '12px' }}>
                 {new Date(comment.created_at).toLocaleString()}
@@ -282,8 +283,12 @@ function Home() {
   const [commentImagePreviews, setCommentImagePreviews] = useState({});
   const [replyImagePreviews, setReplyImagePreviews] = useState({});
   const [highlightedPostId, setHighlightedPostId] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [allUsers, setAllUsers] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const categories = ['전체', '공지', '일상', '영화', '게임'];
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -296,7 +301,8 @@ function Home() {
       try {
         const profile = await getMyProfile();
         setUser(profile);
-        const list = await getPosts(1, 1000);
+        const category = selectedCategory === '전체' ? null : selectedCategory;
+        const list = await getPosts(1, 1000, category);
         setPosts(list);
         setHasMore(list.length === 1000);
 
@@ -309,6 +315,10 @@ function Home() {
           map[post.id] = commentsList[index] || [];
         });
         setCommentsByPost(map);
+        
+        // 유저 리스트 가져오기
+        const users = await getAllUsers(50);
+        setAllUsers(users);
       } catch (err) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -317,7 +327,7 @@ function Home() {
     };
 
     fetchProfile();
-  }, [navigate]);
+  }, [navigate, selectedCategory]);
 
   // 프로필에서 게시글 클릭 시 하이라이트 처리
   useEffect(() => {
@@ -367,7 +377,8 @@ function Home() {
         setIsLoading(true);
 
         try {
-          const newPosts = await getPosts(currentPage, 1000);
+          const category = selectedCategory === '전체' ? null : selectedCategory;
+          const newPosts = await getPosts(currentPage, 1000, category);
           if (newPosts.length === 0) {
             setHasMore(false);
           } else {
@@ -395,7 +406,7 @@ function Home() {
 
       loadMorePosts();
     }
-  }, [currentPage, isLoading, hasMore]);
+  }, [currentPage, isLoading, hasMore, selectedCategory]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -423,6 +434,7 @@ function Home() {
       const created = await createPost({
         content: trimmed || undefined,
         image_url: imageUrl || undefined,
+        category: selectedCategory === '전체' ? '전체' : selectedCategory,
       });
       setPosts([created, ...posts]);
       setPostContent('');
@@ -621,41 +633,98 @@ function Home() {
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '20px auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>GGame 홈</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <NotificationBell />
-          <button onClick={handleLogout} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-            로그아웃
-          </button>
+    <div style={{ display: 'flex', maxWidth: '1400px', margin: '20px auto', padding: '20px', gap: '20px' }}>
+      {/* 메인 컨텐츠 영역 */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+          <h1>GGame 홈</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <NotificationBell />
+            <button
+              onClick={handleLogout}
+              style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+            >
+              👋 로그아웃
+            </button>
+          </div>
         </div>
-      </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
-      
-      <div style={{ backgroundColor: '#f5f5f5', padding: '20px', borderRadius: '8px' }}>
-        <h2>내 프로필</h2>
-        <p><strong>사용자명:</strong> {user.username}</p>
-        <p><strong>표시 이름:</strong> {user.display_name}</p>
-        <p><strong>이메일:</strong> {user.email}</p>
-        {user.bio && <p><strong>소개:</strong> {user.bio}</p>}
-        <button
+        {error && <div style={{ color: '#ef4444', marginBottom: '15px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>{error}</div>}
+        
+        <div style={{ backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e5e7eb' }}>
+          <h2 style={{ marginTop: 0 }}>👤 내 프로필</h2>
+          <p><strong>사용자명:</strong> {user.username}</p>
+          <p><strong>표시 이름:</strong> {user.display_name}</p>
+          <p><strong>이메일:</strong> {user.email}</p>
+          {user.bio && <p><strong>소개:</strong> {user.bio}</p>}
+          <button
           onClick={() => navigate(`/profile/${user.id}`)}
-          style={{ marginTop: '15px', padding: '10px 20px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px' }}
+          style={{ marginTop: '15px', padding: '10px 20px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
         >
-          내 프로필 페이지로
+          🔍 내 프로필 페이지로
         </button>
       </div>
 
-      <div style={{ marginTop: '30px' }}>
-        <h2>게시글 작성</h2>
+      <div style={{ marginTop: '30px', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <h2 style={{ marginTop: 0 }}>✍️ 게시글 작성</h2>
+        
+        {/* 카테고리 선택 탭 */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '10px', 
+          marginBottom: '15px', 
+          padding: '10px', 
+          backgroundColor: '#f9fafb', 
+          borderRadius: '8px',
+          overflowX: 'auto',
+          flexWrap: 'wrap'
+        }}>
+          {categories.map(category => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setSelectedCategory(category)}
+              style={{
+                padding: '8px 16px',
+                cursor: 'pointer',
+                backgroundColor: selectedCategory === category ? '#2563eb' : '#fff',
+                color: selectedCategory === category ? '#fff' : '#374151',
+                border: selectedCategory === category ? '2px solid #2563eb' : '1px solid #d1d5db',
+                borderRadius: '20px',
+                fontWeight: selectedCategory === category ? '700' : '500',
+                fontSize: '13px',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseEnter={(e) => {
+                if (selectedCategory !== category) {
+                  e.target.style.backgroundColor = '#f3f4f6';
+                  e.target.style.borderColor = '#9ca3af';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedCategory !== category) {
+                  e.target.style.backgroundColor = '#fff';
+                  e.target.style.borderColor = '#d1d5db';
+                }
+              }}
+            >
+              {category === '공지' ? '📢 ' : category === '일상' ? '📝 ' : category === '영화' ? '🎬 ' : category === '게임' ? '🎮 ' : '📋 '}
+              {category}
+            </button>
+          ))}
+        </div>
+        
         <form onSubmit={handleCreatePost} style={{ marginTop: '10px' }}>
           <textarea
             value={postContent}
             onChange={(e) => setPostContent(e.target.value)}
-            placeholder="내용을 입력하세요"
-            style={{ width: '100%', minHeight: '100px', padding: '10px' }}
+            placeholder="게시글을 작성해주세요 💭"
+            style={{ width: '100%', minHeight: '100px', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: '14px' }}
           />
           <input
             type="file"
@@ -669,7 +738,7 @@ function Home() {
                 setPostImagePreview(null);
               }
             }}
-            style={{ marginTop: '8px' }}
+            style={{ marginTop: '12px', padding: '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
           />
           {postImagePreview && (
             <div style={{ marginTop: '10px', position: 'relative', display: 'inline-block' }}>
@@ -697,7 +766,8 @@ function Home() {
                   fontSize: '14px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  fontWeight: 'bold'
                 }}
               >
                 ×
@@ -706,9 +776,11 @@ function Home() {
           )}
           <button
             type="submit"
-            style={{ marginTop: '10px', padding: '10px 20px', cursor: 'pointer' }}
+            style={{ marginTop: '12px', padding: '10px 20px', cursor: 'pointer', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
           >
-            게시글 작성
+            🚀 게시글 작성
           </button>
         </form>
       </div>
@@ -743,7 +815,7 @@ function Home() {
                     size="40px"
                   />
                   <div>
-                    <strong>{post.author_display_name || post.author_username}</strong>
+                    <strong style={{ color: post.author_display_name_color || '#000000' }}>{post.author_display_name || post.author_username}</strong>
                     <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
                       {new Date(post.created_at).toLocaleString()}
                     </span>
@@ -754,36 +826,65 @@ function Home() {
                     )}
                   </div>
                 </div>
-                {isOwner && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {editingPostId === post.id ? (
-                      <>
-                        <button onClick={() => handleUpdatePost(post.id)} style={{ cursor: 'pointer' }}>
-                          저장
-                        </button>
-                        <button onClick={cancelEdit} style={{ cursor: 'pointer' }}>
-                          취소
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => startEdit(post)} style={{ cursor: 'pointer' }}>
-                          수정
-                        </button>
-                        <button onClick={() => handleDeletePost(post.id)} style={{ cursor: 'pointer' }}>
-                          삭제
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {/* 카테고리 뱃지 */}
+                  {post.category && post.category !== '전체' && (
+                    <span style={{
+                      padding: '4px 12px',
+                      backgroundColor: 
+                        post.category === '공지' ? '#fee2e2' :
+                        post.category === '일상' ? '#fef3c7' :
+                        post.category === '영화' ? '#dbeafe' :
+                        post.category === '게임' ? '#dcfce7' : '#f3f4f6',
+                      color:
+                        post.category === '공지' ? '#991b1b' :
+                        post.category === '일상' ? '#92400e' :
+                        post.category === '영화' ? '#1e40af' :
+                        post.category === '게임' ? '#166534' : '#374151',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      {post.category === '공지' ? '📢 ' : post.category === '일상' ? '📝 ' : post.category === '영화' ? '🎬 ' : post.category === '게임' ? '🎮 ' : ''}
+                      {post.category}
+                    </span>
+                  )}
+                  {isOwner && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {editingPostId === post.id ? (
+                        <>
+                          <button onClick={() => handleUpdatePost(post.id)} style={{ cursor: 'pointer', color: '#10b981', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.opacity = '0.7'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                            ✅ 저장
+                          </button>
+                          <button onClick={cancelEdit} style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.opacity = '0.7'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                            ❌ 취소
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(post)} style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.opacity = '0.7'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                            ✏️ 수정
+                          </button>
+                          <button onClick={() => handleDeletePost(post.id)} style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.opacity = '0.7'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                            🗑 삭제
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <button onClick={() => handleToggleLike(post)} style={{ cursor: 'pointer' }}>
-                  {liked ? '좋아요 취소' : '좋아요'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e5e7eb' }}>
+                <button
+                  onClick={() => handleToggleLike(post)}
+                  style={{ cursor: 'pointer', color: liked ? '#ef4444' : '#6b7280', background: 'none', border: 'none', fontSize: '12px', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => e.target.style.transform = 'scale(1.2)'}
+                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                >
+                  {liked ? '❤️' : '🤍'} {liked ? '\u00a0좋아요 취소' : '\u00a0좋아요'}
                 </button>
-                <span>좋아요 {post.likes_count || 0}</span>
+                <span style={{ color: '#ef4444', fontWeight: '600', fontSize: '12px' }}>❤️ {post.likes_count || 0}</span>
               </div>
 
               {editingPostId === post.id ? (
@@ -848,7 +949,7 @@ function Home() {
                   </>
                 )}
 
-                <div style={{ marginTop: '10px' }}>
+                <div style={{ marginTop: '12px' }}>
                   {activeCommentPostId === post.id ? (
                     <>
                       <textarea
@@ -856,8 +957,8 @@ function Home() {
                         onChange={(e) =>
                           setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }))
                         }
-                        placeholder="댓글을 입력하세요"
-                        style={{ width: '100%', minHeight: '70px', padding: '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                        placeholder="댓글을 날려 주세요... 💭"
+                        style={{ width: '100%', minHeight: '70px', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: '14px' }}
                       />
                       <input
                         type="file"
@@ -880,7 +981,7 @@ function Home() {
                             }));
                           }
                         }}
-                        style={{ marginTop: '8px' }}
+                        style={{ marginTop: '10px', padding: '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
                       />
                       {commentImagePreviews[post.id] && (
                         <div style={{ marginTop: '10px', position: 'relative', display: 'inline-block' }}>
@@ -908,28 +1009,31 @@ function Home() {
                               fontSize: '12px',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center'
+                              justifyContent: 'center',
+                              fontWeight: 'bold'
                             }}
                           >
                             ×
                           </button>
                         </div>
                       )}
-                      <div style={{ marginTop: '6px', display: 'flex', gap: '8px' }}>
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
                         <button
                           onClick={() => handleCommentSubmit(post.id)}
-                          style={{ cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px' }}
+                          style={{ cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: '600', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
                         >
-                          댓글 작성
+                          🚀 댓글 등록
                         </button>
                         <button
                           onClick={() => {
                             setActiveCommentPostId(null);
                             setExpandedComments((prev) => ({ ...prev, [post.id]: false }));
                           }}
-                          style={{ cursor: 'pointer', backgroundColor: '#f3f4f6', border: 'none', padding: '6px 12px', borderRadius: '6px' }}
+                          style={{ cursor: 'pointer', backgroundColor: '#f3f4f6', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: '600', transition: 'all 0.2s' }}
                         >
-                          취소
+                          ❌ 취소
                         </button>
                       </div>
                     </>
@@ -939,9 +1043,9 @@ function Home() {
                         setActiveCommentPostId(post.id);
                         setExpandedComments((prev) => ({ ...prev, [post.id]: true }));
                       }}
-                      style={{ cursor: 'pointer', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: '6px' }}
+                      style={{ cursor: 'pointer', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', padding: '8px 16px', borderRadius: '6px', fontWeight: '600', transition: 'all 0.2s' }}
                     >
-                      댓글 달기
+                      💬 댓글 달기
                     </button>
                   )}
                 </div>
@@ -956,6 +1060,92 @@ function Home() {
             <p>로딩 중...</p>
           </div>
         )}
+      </div>
+      
+    </div>
+
+    {/* 오른쪽 유저 리스트 사이드바 */}
+    <div style={{ width: '260px', flexShrink: 0 }}>
+      <div style={{ 
+        position: 'sticky', 
+        top: '20px',
+        backgroundColor: '#fff', 
+        padding: '15px', 
+        borderRadius: '10px', 
+        border: '1px solid #e5e7eb',
+        maxHeight: 'calc(100vh - 40px)',
+        overflowY: 'auto'
+      }}>
+        <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '15px', fontWeight: '700', color: '#111827' }}>
+          👥 멤버 ({allUsers.length})
+        </h3>
+        
+        {allUsers.length === 0 ? (
+          <p style={{ color: '#888', fontSize: '13px', textAlign: 'center' }}>멤버가 없습니다.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {allUsers.map((member) => (
+              <div
+                key={member.id}
+                onClick={() => navigate(`/profile/${member.id}`)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  backgroundColor: member.id === user.id ? '#eff6ff' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = member.id === user.id ? '#eff6ff' : 'transparent';
+                }}
+              >
+                <AvatarBubble
+                  profileImage={member.profile_image}
+                  displayName={member.display_name || member.username}
+                  userId={member.id}
+                  size="32px"
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ 
+                    fontWeight: '600', 
+                    fontSize: '13px',
+                    color: '#111827',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {member.display_name || member.username}
+                    {member.id === user.id && (
+                      <span style={{ 
+                        marginLeft: '4px', 
+                        fontSize: '11px', 
+                        color: '#2563eb',
+                        fontWeight: '500'
+                      }}>
+                        (나)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#9ca3af',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      @{member.username}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
     </div>

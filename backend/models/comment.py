@@ -21,6 +21,7 @@ class CommentResponse(BaseModel):
     author_id: str
     author_username: str
     author_display_name: str
+    author_display_name_color: Optional[str] = "#000000"
     author_profile_image: Optional[str] = None
     content: str
     image_url: Optional[str] = None

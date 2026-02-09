@@ -97,12 +97,12 @@ function Signup() {
             style={{ width: '100%', padding: '8px', marginTop: '5px', minHeight: '80px' }}
           />
         </div>
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', cursor: 'pointer' }}>
-          회원가입
+        <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '16px', fontWeight: '600', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'} onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}>
+          ✨ 회원가입
         </button>
       </form>
       <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        이미 계정이 있으신가요? <a href="/login">로그인</a>
+        이미 계정이 있으신가요? <a href="/login" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600' }}>🔑 로그인</a>
       </p>
     </div>
   );

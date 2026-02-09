@@ -48,12 +48,26 @@ function Login() {
             style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', cursor: 'pointer' }}>
-          로그인
+        <button 
+          type="submit" 
+          style={{ 
+            width: '100%', 
+            padding: '12px', 
+            backgroundColor: '#2563eb', 
+            color: 'white', 
+            border: 'none', 
+            cursor: 'pointer', 
+            borderRadius: '8px', 
+            fontSize: '16px', 
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+        >
+          🔑 로그인
         </button>
       </form>
       <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        계정이 없으신가요? <a href="/signup">회원가입</a>
+        계정이 없으신가요? <a href="/signup" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600' }}>✨ 회원가입</a>
       </p>
     </div>
   );
