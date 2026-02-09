@@ -278,6 +278,7 @@ function Home() {
   const [replyImageInputs, setReplyImageInputs] = useState({});
   const [replyingTo, setReplyingTo] = useState(null);
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [expandedComments, setExpandedComments] = useState({});
   const [postImagePreview, setPostImagePreview] = useState(null);
   const [commentImagePreviews, setCommentImagePreviews] = useState({});
@@ -289,6 +290,16 @@ function Home() {
   const location = useLocation();
   
   const categories = ['전체', '공지', '일상', '영화', '게임'];
+
+  // 윈도우 리사이즈 처리
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -633,10 +644,10 @@ function Home() {
   }
 
   return (
-    <div style={{ display: 'flex', maxWidth: '1400px', margin: '20px auto', padding: '20px', gap: '20px' }}>
+    <div style={{ display: 'flex', maxWidth: '1400px', margin: '20px auto', padding: '20px', gap: '20px', flexWrap: windowWidth < 1024 ? 'wrap' : 'nowrap' }}>
       {/* 메인 컨텐츠 영역 */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+      <div style={{ flex: 1, minWidth: 0, width: windowWidth < 1024 ? '100%' : 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '10px' }}>
           <h1>GGame 홈</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <NotificationBell />
@@ -1065,7 +1076,7 @@ function Home() {
     </div>
 
     {/* 오른쪽 유저 리스트 사이드바 */}
-    <div style={{ width: '260px', flexShrink: 0 }}>
+    <div style={{ width: windowWidth < 1024 ? '100%' : '260px', flexShrink: 0, minWidth: 0 }}>
       <div style={{ 
         position: 'sticky', 
         top: '20px',
@@ -1073,7 +1084,7 @@ function Home() {
         padding: '15px', 
         borderRadius: '10px', 
         border: '1px solid #e5e7eb',
-        maxHeight: 'calc(100vh - 40px)',
+        maxHeight: windowWidth < 1024 ? 'none' : 'calc(100vh - 40px)',
         overflowY: 'auto'
       }}>
         <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '15px', fontWeight: '700', color: '#111827' }}>
