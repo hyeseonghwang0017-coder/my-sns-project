@@ -1076,7 +1076,7 @@ function Home() {
     </div>
 
     {/* 오른쪽 유저 리스트 사이드바 */}
-    <div style={{ width: windowWidth < 1024 ? '100%' : '260px', flexShrink: 0, minWidth: 0 }}>
+    <div style={{ display: windowWidth < 1024 ? 'none' : 'block', width: '260px', flexShrink: 0, minWidth: 0 }}>
       <div style={{ 
         position: 'sticky', 
         top: '20px',
