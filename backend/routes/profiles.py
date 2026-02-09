@@ -164,6 +164,7 @@ async def get_guestbook(user_id: str, request: Request):
             author_id=entry["author_id"],
             author_username=author_map.get(entry["author_id"], {}).get("username", entry.get("author_username", "")),
             author_display_name=author_map.get(entry["author_id"], {}).get("display_name", entry.get("author_display_name", "")),
+            author_display_name_color=author_map.get(entry["author_id"], {}).get("display_name_color", entry.get("author_display_name_color")),
             author_profile_image=author_map.get(entry["author_id"], {}).get("profile_image", entry.get("author_profile_image")),
             content=entry["content"],
             created_at=entry["created_at"],
@@ -186,12 +187,16 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
     author = await db.users.find_one({"_id": ObjectId(current_user_id)})
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
+
+    recipient_id = str(profile_user["_id"])
+    actor_id = str(author["_id"])
     
     entry_doc = {
-        "profile_user_id": user_id,
-        "author_id": current_user_id,
+        "profile_user_id": recipient_id,
+        "author_id": actor_id,
         "author_username": author["username"],
         "author_display_name": author["display_name"],
+        "author_display_name_color": author.get("display_name_color"),
         "author_profile_image": author.get("profile_image"),
         "content": payload.content,
         "created_at": datetime.utcnow(),
@@ -202,10 +207,10 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
     entry_doc["_id"] = result.inserted_id
     
     # 알림 생성 (자신의 방명록에는 알림 안 함)
-    if user_id != current_user_id:
+    if recipient_id != actor_id:
         await db.notifications.insert_one({
-            "recipient_id": user_id,
-            "actor_id": current_user_id,
+            "recipient_id": recipient_id,
+            "actor_id": actor_id,
             "actor_username": author["username"],
             "actor_display_name": author["display_name"],
             "type": "guestbook",
@@ -223,6 +228,7 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
         author_id=entry_doc["author_id"],
         author_username=entry_doc["author_username"],
         author_display_name=entry_doc["author_display_name"],
+        author_display_name_color=entry_doc.get("author_display_name_color"),
         author_profile_image=entry_doc.get("author_profile_image"),
         content=entry_doc["content"],
         created_at=entry_doc["created_at"],
@@ -256,6 +262,7 @@ async def update_guestbook_entry(user_id: str, entry_id: str, payload: Guestbook
         author_id=entry["author_id"],
         author_username=entry["author_username"],
         author_display_name=entry["author_display_name"],
+        author_display_name_color=entry.get("author_display_name_color"),
         author_profile_image=entry.get("author_profile_image"),
         content=entry["content"],
         created_at=entry["created_at"],

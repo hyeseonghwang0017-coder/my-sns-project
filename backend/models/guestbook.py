@@ -17,6 +17,7 @@ class GuestbookResponse(BaseModel):
     author_id: str  # 방명록 작성자
     author_username: str
     author_display_name: str
+    author_display_name_color: Optional[str] = None
     author_profile_image: Optional[str] = None
     content: str
     created_at: datetime

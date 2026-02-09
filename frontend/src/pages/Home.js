@@ -18,6 +18,53 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import AvatarBubble from '../components/AvatarBubble';
 
+const renderContentWithLinks = (text) => {
+  if (!text) return null;
+
+  const linkRegex = /(?:https?:\/\/|www\.)[^\s]+/g;
+  const nodes = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkRegex.exec(text)) !== null) {
+    const { index } = match;
+    const matchText = match[0];
+
+    if (index > lastIndex) {
+      nodes.push(
+        <React.Fragment key={`text-${lastIndex}`}>
+          {text.slice(lastIndex, index)}
+        </React.Fragment>
+      );
+    }
+
+    const href = matchText.startsWith('http') ? matchText : `https://${matchText}`;
+    nodes.push(
+      <a
+        key={`link-${index}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}
+      >
+        {matchText}
+      </a>
+    );
+
+    lastIndex = index + matchText.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(
+      <React.Fragment key={`text-${lastIndex}`}>
+        {text.slice(lastIndex)}
+      </React.Fragment>
+    );
+  }
+
+  return nodes;
+};
+
 function CommentItem({
   postId,
   comment,
@@ -151,7 +198,9 @@ function CommentItem({
               style={{ width: '100%', minHeight: '60px', padding: '8px', marginTop: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
             />
           ) : (
-            <p style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', color: '#111827' }}>{comment.content}</p>
+            <p style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', color: '#111827' }}>
+              {renderContentWithLinks(comment.content)}
+            </p>
           )}
 
           {comment.image_url && (
@@ -270,6 +319,7 @@ function Home() {
   const [postImageFile, setPostImageFile] = useState(null);
   const [editingPostId, setEditingPostId] = useState(null);
   const [editingContent, setEditingContent] = useState('');
+  const [editingCategory, setEditingCategory] = useState('일상');
   const [error, setError] = useState('');
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
@@ -434,7 +484,7 @@ function Home() {
       const created = await createPost({
         content: trimmed || undefined,
         image_url: imageUrl || undefined,
-        category: selectedCategory === '전체' ? '전체' : selectedCategory,
+        category: selectedCategory === '전체' ? '일상' : selectedCategory,
       });
       setPosts([created, ...posts]);
       setPostContent('');
@@ -448,12 +498,14 @@ function Home() {
   const startEdit = (post) => {
     setEditingPostId(post.id);
     setEditingContent(post.content);
+    setEditingCategory(post.category || '일상');
     setError('');
   };
 
   const cancelEdit = () => {
     setEditingPostId(null);
     setEditingContent('');
+    setEditingCategory('일상');
     setError('');
   };
 
@@ -465,7 +517,7 @@ function Home() {
     }
 
     try {
-      const updated = await updatePost(postId, { content: trimmed });
+      const updated = await updatePost(postId, { content: trimmed, category: editingCategory });
       setPosts(posts.map((post) => (post.id === postId ? updated : post)));
       cancelEdit();
     } catch (err) {
@@ -961,13 +1013,43 @@ function Home() {
               </div>
 
               {editingPostId === post.id ? (
-                <textarea
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  style={{ width: '100%', minHeight: '80px', padding: '10px' }}
-                />
+                <>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>카테고리 변경:</label>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {categories.filter(cat => cat !== '전체').map(category => (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => setEditingCategory(category)}
+                          style={{
+                            padding: '6px 12px',
+                            cursor: 'pointer',
+                            backgroundColor: editingCategory === category ? '#2563eb' : '#fff',
+                            color: editingCategory === category ? '#fff' : '#374151',
+                            border: editingCategory === category ? '2px solid #2563eb' : '1px solid #d1d5db',
+                            borderRadius: '16px',
+                            fontWeight: editingCategory === category ? '600' : '500',
+                            fontSize: '12px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {category === '공지' ? '📢 ' : category === '일상' ? '📝 ' : category === '영화' ? '🎬 ' : category === '게임' ? '🎮 ' : ''}
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    style={{ width: '100%', minHeight: '80px', padding: '10px' }}
+                  />
+                </>
               ) : (
-                <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{post.content}</p>
+                <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {renderContentWithLinks(post.content)}
+                </p>
               )}
 
               {post.image_url && (

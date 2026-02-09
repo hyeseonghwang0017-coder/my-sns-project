@@ -703,9 +703,23 @@ function Profile() {
                   )}
                   <div>
                     {entry.author_id === currentUser.id ? (
-                      <strong style={{ color: displayNameColor }}>{entry.author_display_name}</strong>
+                      <strong
+                        style={{ cursor: 'pointer', color: entry.author_display_name_color || '#000000', transition: 'all 0.2s' }}
+                        onClick={() => navigate(`/profile/${entry.author_id}`)}
+                        onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                        onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
+                      >
+                        {entry.author_display_name}
+                      </strong>
                     ) : (
-                      <strong style={{ cursor: 'pointer', color: '#2563eb', transition: 'all 0.2s' }} onClick={() => navigate(`/profile/${entry.author_id}`)} onMouseEnter={(e) => e.target.style.textDecoration = 'underline'} onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>{entry.author_display_name}</strong>
+                      <strong
+                        style={{ cursor: 'pointer', color: entry.author_display_name_color || '#2563eb', transition: 'all 0.2s' }}
+                        onClick={() => navigate(`/profile/${entry.author_id}`)}
+                        onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                        onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
+                      >
+                        {entry.author_display_name}
+                      </strong>
                     )}
                     <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
                       {new Date(entry.created_at).toLocaleString()}
