@@ -1,19 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Body
 from models.guestbook import GuestbookCreate, GuestbookUpdate, GuestbookResponse
 from utils.auth import get_current_user
+from utils.database import get_db, parse_object_id
+from typing import Dict
 from datetime import datetime
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/profiles", tags=["Profiles"])
-
-def get_db(request: Request):
-    return request.app.mongodb
-
-def parse_object_id(id_str: str) -> ObjectId:
-    try:
-        return ObjectId(id_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
 
 # 사용자 프로필 조회
 @router.get("/{user_id}")
@@ -27,8 +20,10 @@ async def get_user_profile(user_id: str, request: Request):
         "id": str(user["_id"]),
         "username": user["username"],
         "display_name": user["display_name"],
+        "display_name_color": user.get("display_name_color", "#000000"),
         "bio": user.get("bio"),
         "profile_image": user.get("profile_image"),
+        "header_image": user.get("header_image"),
         "created_at": user["created_at"],
     }
 
@@ -49,8 +44,59 @@ async def update_profile_image(user_id: str, image_url: str, request: Request, c
         "id": str(user["_id"]),
         "username": user["username"],
         "display_name": user["display_name"],
+        "display_name_color": user.get("display_name_color", "#000000"),
         "bio": user.get("bio"),
         "profile_image": user.get("profile_image"),
+        "header_image": user.get("header_image"),
+        "created_at": user["created_at"],
+    }
+
+# 헤더 이미지 업데이트
+@router.put("/{user_id}/header-image")
+async def update_header_image(user_id: str, image_url: str, request: Request, current_user_id: str = Depends(get_current_user)):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    
+    db = get_db(request)
+    await db.users.update_one(
+        {"_id": parse_object_id(user_id)},
+        {"$set": {"header_image": image_url}}
+    )
+    
+    user = await db.users.find_one({"_id": parse_object_id(user_id)})
+    return {
+        "id": str(user["_id"]),
+        "username": user["username"],
+        "display_name": user["display_name"],
+        "display_name_color": user.get("display_name_color", "#000000"),
+        "bio": user.get("bio"),
+        "profile_image": user.get("profile_image"),
+        "header_image": user.get("header_image"),
+        "created_at": user["created_at"],
+    }
+
+@router.put("/{user_id}/display-name-color")
+async def update_display_name_color(user_id: str, body: Dict = Body(...), request: Request = None, current_user_id: str = Depends(get_current_user)):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    
+    color = body.get("color", "#000000")
+    
+    db = request.app.mongodb
+    await db.users.update_one(
+        {"_id": parse_object_id(user_id)},
+        {"$set": {"display_name_color": color}}
+    )
+    
+    user = await db.users.find_one({"_id": parse_object_id(user_id)})
+    return {
+        "id": str(user["_id"]),
+        "username": user["username"],
+        "display_name": user["display_name"],
+        "display_name_color": user.get("display_name_color", "#000000"),
+        "bio": user.get("bio"),
+        "profile_image": user.get("profile_image"),
+        "header_image": user.get("header_image"),
         "created_at": user["created_at"],
     }
 
@@ -66,6 +112,8 @@ async def get_user_posts(user_id: str, request: Request):
     posts = await cursor.to_list(length=100)
     
     result = []
+    author_username = user.get("username", "")
+    author_display_name = user.get("display_name", "")
     for post in posts:
         liked_by = post.get("liked_by", [])
         author_profile_image = post.get("author_profile_image")
@@ -82,8 +130,8 @@ async def get_user_posts(user_id: str, request: Request):
         result.append({
             "id": str(post["_id"]),
             "author_id": post["author_id"],
-            "author_username": post.get("author_username", ""),
-            "author_display_name": post.get("author_display_name", ""),
+            "author_username": author_username,
+            "author_display_name": author_display_name,
             "author_profile_image": author_profile_image,
             "content": post.get("content", ""),
             "image_url": post.get("image_url"),
@@ -105,14 +153,18 @@ async def get_guestbook(user_id: str, request: Request):
     cursor = db.guestbook.find({"profile_user_id": user_id}).sort("created_at", -1)
     entries = await cursor.to_list(length=100)
     
+    author_ids = list({entry["author_id"] for entry in entries})
+    authors = await db.users.find({"_id": {"$in": [ObjectId(aid) for aid in author_ids]}}).to_list(length=200)
+    author_map = {str(author["_id"]): author for author in authors}
+
     return [
         GuestbookResponse(
             id=str(entry["_id"]),
             profile_user_id=entry["profile_user_id"],
             author_id=entry["author_id"],
-            author_username=entry["author_username"],
-            author_display_name=entry["author_display_name"],
-            author_profile_image=entry.get("author_profile_image"),
+            author_username=author_map.get(entry["author_id"], {}).get("username", entry.get("author_username", "")),
+            author_display_name=author_map.get(entry["author_id"], {}).get("display_name", entry.get("author_display_name", "")),
+            author_profile_image=author_map.get(entry["author_id"], {}).get("profile_image", entry.get("author_profile_image")),
             content=entry["content"],
             created_at=entry["created_at"],
             updated_at=entry.get("updated_at"),

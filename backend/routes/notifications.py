@@ -1,19 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from models.notification import NotificationCreate, NotificationResponse, NotificationUpdate
 from utils.auth import get_current_user
+from utils.database import get_db, parse_object_id
 from datetime import datetime
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
-
-def get_db(request: Request):
-    return request.app.mongodb
-
-def parse_object_id(id_str: str) -> ObjectId:
-    try:
-        return ObjectId(id_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
 
 def build_notification_response(notification) -> NotificationResponse:
     return NotificationResponse(
@@ -36,7 +28,22 @@ async def get_notifications(request: Request, user_id: str = Depends(get_current
     db = get_db(request)
     cursor = db.notifications.find({"recipient_id": user_id}).sort("created_at", -1)
     notifications = await cursor.to_list(length=100)
-    return [build_notification_response(n) for n in notifications]
+
+    actor_ids = list({n.get("actor_id") for n in notifications if n.get("actor_id")})
+    actors = await db.users.find({"_id": {"$in": [ObjectId(aid) for aid in actor_ids]}}).to_list(length=200)
+    actor_map = {str(actor["_id"]): actor for actor in actors}
+
+    responses = []
+    for n in notifications:
+        actor = actor_map.get(n.get("actor_id"))
+        if actor:
+            n = {
+                **n,
+                "actor_username": actor.get("username", n.get("actor_username", "")),
+                "actor_display_name": actor.get("display_name", n.get("actor_display_name", "")),
+            }
+        responses.append(build_notification_response(n))
+    return responses
 
 @router.get("/unread/count")
 async def get_unread_count(request: Request, user_id: str = Depends(get_current_user)):

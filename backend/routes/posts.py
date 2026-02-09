@@ -2,41 +2,42 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from models.post import PostCreate, PostUpdate, PostResponse
 from models.comment import CommentCreate, CommentUpdate, CommentResponse
 from utils.auth import get_current_user
+from utils.database import get_db, parse_object_id
 from datetime import datetime
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/posts", tags=["Posts"])
 
-def get_db(request: Request):
-    return request.app.mongodb
-
-def parse_object_id(id_str: str) -> ObjectId:
-    try:
-        return ObjectId(id_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-
 async def build_post_response(post, db=None) -> PostResponse:
     liked_by = post.get("liked_by", [])
     author_profile_image = post.get("author_profile_image")
+    author_display_name_color = post.get("author_display_name_color", "#000000")
+    author_username = post.get("author_username", "")
+    author_display_name = post.get("author_display_name", "")
     
-    # author_profile_image가 없으면 user collection에서 조회
-    if not author_profile_image and db is not None and post.get("author_id"):
+    # 항상 최신 사용자 정보 조회 (색상 변경 반영)
+    if db is not None and post.get("author_id"):
         try:
             user = await db.users.find_one({"_id": ObjectId(post["author_id"])})
             if user:
-                author_profile_image = user.get("profile_image")
+                author_username = user.get("username", author_username)
+                author_display_name = user.get("display_name", author_display_name)
+                if user.get("profile_image"):
+                    author_profile_image = user.get("profile_image")
+                author_display_name_color = user.get("display_name_color", "#000000")
         except:
             pass
     
     return PostResponse(
         id=str(post["_id"]),
         author_id=post["author_id"],
-        author_username=post.get("author_username", ""),
-        author_display_name=post.get("author_display_name", ""),
+        author_username=author_username,
+        author_display_name=author_display_name,
+        author_display_name_color=author_display_name_color,
         author_profile_image=author_profile_image,
         content=post.get("content", ""),
         image_url=post.get("image_url"),
+        category=post.get("category", "전체"),
         likes_count=len(liked_by),
         liked_by=liked_by,
         created_at=post["created_at"],
@@ -45,13 +46,20 @@ async def build_post_response(post, db=None) -> PostResponse:
 
 async def build_comment_response(comment, db=None) -> CommentResponse:
     author_profile_image = comment.get("author_profile_image")
+    author_display_name_color = comment.get("author_display_name_color", "#000000")
+    author_username = comment.get("author_username", "")
+    author_display_name = comment.get("author_display_name", "")
     
-    # author_profile_image가 없으면 user collection에서 조회
-    if not author_profile_image and db is not None and comment.get("author_id"):
+    # 항상 최신 사용자 정보 조회 (색상 변경 반영)
+    if db is not None and comment.get("author_id"):
         try:
             user = await db.users.find_one({"_id": ObjectId(comment["author_id"])})
             if user:
-                author_profile_image = user.get("profile_image")
+                author_username = user.get("username", author_username)
+                author_display_name = user.get("display_name", author_display_name)
+                if user.get("profile_image"):
+                    author_profile_image = user.get("profile_image")
+                author_display_name_color = user.get("display_name_color", "#000000")
         except:
             pass
     
@@ -60,8 +68,9 @@ async def build_comment_response(comment, db=None) -> CommentResponse:
         post_id=comment["post_id"],
         parent_id=comment.get("parent_id"),
         author_id=comment["author_id"],
-        author_username=comment.get("author_username", ""),
-        author_display_name=comment.get("author_display_name", ""),
+        author_username=author_username,
+        author_display_name=author_display_name,
+        author_display_name_color=author_display_name_color,
         author_profile_image=author_profile_image,
         content=comment.get("content", ""),
         image_url=comment.get("image_url"),
@@ -80,6 +89,12 @@ async def create_post(payload: PostCreate, request: Request, user_id: str = Depe
     content = (payload.content or "").strip()
     if content == "" and not payload.image_url:
         raise HTTPException(status_code=400, detail="Content or image is required")
+    
+    # 카테고리 유효성 검증
+    valid_categories = ["공지", "전체", "일상", "영화", "게임"]
+    category = payload.category or "전체"
+    if category not in valid_categories:
+        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}")
 
     post_doc = {
         "author_id": user_id,
@@ -88,22 +103,28 @@ async def create_post(payload: PostCreate, request: Request, user_id: str = Depe
         "author_profile_image": user.get("profile_image"),
         "content": content,
         "image_url": payload.image_url,
+        "category": category,
         "liked_by": [],
         "created_at": datetime.utcnow(),
         "updated_at": None,
     }
 
     result = await db.posts.insert_one(post_doc)
-    post_doc["id"] = str(result.inserted_id)
-
     post_doc["_id"] = result.inserted_id
+
     return await build_post_response(post_doc, db)
 
 @router.get("/", response_model=list[PostResponse])
-async def list_posts(request: Request, page: int = 1, limit: int = 1000):
+async def list_posts(request: Request, page: int = 1, limit: int = 1000, category: str = None):
     db = get_db(request)
     skip = (page - 1) * limit
-    cursor = db.posts.find().sort("created_at", -1).skip(skip).limit(limit)
+    
+    # 카테고리 필터링
+    query = {}
+    if category and category != "전체":
+        query["category"] = category
+    
+    cursor = db.posts.find(query).sort("created_at", -1).skip(skip).limit(limit)
     posts = await cursor.to_list(length=limit)
 
     return [await build_post_response(post, db) for post in posts]
@@ -146,6 +167,12 @@ async def update_post(post_id: str, payload: PostUpdate, request: Request, user_
         updates["content"] = content
     if payload.image_url is not None:
         updates["image_url"] = payload.image_url
+    if payload.category is not None:
+        # 카테고리 유효성 검증
+        valid_categories = ["공지", "전체", "일상", "영화", "게임"]
+        if payload.category not in valid_categories:
+            raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}")
+        updates["category"] = payload.category
     await db.posts.update_one(
         {"_id": post["_id"]},
         {"$set": updates},
@@ -155,6 +182,8 @@ async def update_post(post_id: str, payload: PostUpdate, request: Request, user_
         post["content"] = content
     if payload.image_url is not None:
         post["image_url"] = payload.image_url
+    if payload.category is not None:
+        post["category"] = payload.category
     post["updated_at"] = updated_at
 
     return await build_post_response(post, db)

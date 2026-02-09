@@ -9,6 +9,9 @@ import {
   deleteGuestbookEntry,
   uploadImage,
   updateProfileImage,
+  updateHeaderImage,
+  updateDisplayNameColor,
+  updateMyProfile,
 } from '../services/api';
 import NotificationBell from '../components/NotificationBell';
 import AvatarBubble from '../components/AvatarBubble';
@@ -26,7 +29,15 @@ function Profile() {
   const [editingContent, setEditingContent] = useState('');
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [headerImageFile, setHeaderImageFile] = useState(null);
+  const [headerImagePreview, setHeaderImagePreview] = useState(null);
+  const [displayNameColor, setDisplayNameColor] = useState('#000000');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editBio, setEditBio] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const postsPerPage = 10;
   const totalPages = Math.ceil(posts.length / postsPerPage);
   const displayedPosts = posts.slice((currentPage - 1) * postsPerPage, currentPage * postsPerPage);
@@ -43,8 +54,13 @@ function Profile() {
 
     const fetchProfileData = async () => {
       try {
+        setLoading(true);
         const profileData = await getUserProfile(userId);
         setProfile(profileData);
+        setDisplayNameColor(profileData.display_name_color || '#000000');
+        setEditDisplayName(profileData.display_name || '');
+        setEditUsername(profileData.username || '');
+        setEditBio(profileData.bio || '');
 
         const postsData = await getUserPosts(userId);
         setPosts(postsData);
@@ -52,7 +68,10 @@ function Profile() {
         const guestbookData = await getGuestbook(userId);
         setGuestbook(guestbookData);
       } catch (err) {
+        console.error('Profile fetch error:', err);
         setError('프로필을 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -71,6 +90,62 @@ function Profile() {
       setError('');
     } catch (err) {
       setError('프로필 사진 업로드에 실패했습니다.');
+    }
+  };
+
+  const handleHeaderImageUpload = async () => {
+    if (!headerImageFile) return;
+
+    try {
+      const uploaded = await uploadImage(headerImageFile);
+      await updateHeaderImage(userId, uploaded.url);
+      setProfile({ ...profile, header_image: uploaded.url });
+      setHeaderImageFile(null);
+      setHeaderImagePreview(null);
+      setError('');
+    } catch (err) {
+      setError('헤더 이미지 업로드에 실패했습니다.');
+    }
+  };
+
+  const handleProfileUpdate = async () => {
+    if (!editDisplayName.trim() || !editUsername.trim()) {
+      setError('닉네임과 @이름을 입력해주세요.');
+      return;
+    }
+
+    try {
+      const updated = await updateMyProfile({
+        display_name: editDisplayName.trim(),
+        username: editUsername.trim(),
+        bio: editBio.trim() || null,
+      });
+
+      setProfile({
+        ...profile,
+        display_name: updated.display_name,
+        username: updated.username,
+        bio: updated.bio,
+      });
+
+      if (currentUser && currentUser.id === updated.id) {
+        const nextUser = { ...currentUser, display_name: updated.display_name, username: updated.username, bio: updated.bio };
+        setCurrentUser(nextUser);
+        localStorage.setItem('user', JSON.stringify(nextUser));
+      }
+
+      const [postsData, guestbookData] = await Promise.all([
+        getUserPosts(userId),
+        getGuestbook(userId),
+      ]);
+      setPosts(postsData);
+      setGuestbook(guestbookData);
+
+      setIsEditingProfile(false);
+      setError('');
+    } catch (err) {
+      const message = err.response?.data?.detail || '프로필 수정에 실패했습니다.';
+      setError(message);
     }
   };
 
@@ -122,8 +197,35 @@ function Profile() {
     }
   };
 
+  const handleDisplayNameColorChange = async (color) => {
+    try {
+      setDisplayNameColor(color);
+      await updateDisplayNameColor(userId, color);
+      setProfile({ ...profile, display_name_color: color });
+      setError('');
+    } catch (err) {
+      setError('닉네임 색깔 변경에 실패했습니다.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '20px', textAlign: 'center' }}>
+        <h2>Loading...</h2>
+        <p>프로필을 불러오는 중입니다...</p>
+      </div>
+    );
+  }
+
   if (!profile || !currentUser) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '20px', textAlign: 'center' }}>
+        <h2>프로필을 찾을 수 없습니다</h2>
+        <button onClick={() => navigate('/')} style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px' }}>
+          홈으로 돌아가기
+        </button>
+      </div>
+    );
   }
 
   const isOwnProfile = currentUser.id === userId;
@@ -131,86 +233,262 @@ function Profile() {
   return (
     <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>프로필</h1>
+        <h1>👤 프로필</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <NotificationBell />
-          <button onClick={() => navigate('/')} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-            홈으로
+          <button onClick={() => navigate('/')} style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}>
+            🏠 홈으로
           </button>
         </div>
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
+      {error && <div style={{ color: '#ef4444', marginBottom: '15px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>{error}</div>}
 
       {/* 프로필 섹션 */}
-      <div style={{ backgroundColor: '#f5f5f5', padding: '30px', borderRadius: '12px', marginBottom: '30px' }}>
-        <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
-          <div>
-            {profile.profile_image ? (
-              <img
-                src={profile.profile_image}
-                alt="프로필"
-                style={{ width: '150px', height: '150px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #ddd' }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: '150px',
-                  height: '150px',
-                  borderRadius: '50%',
-                  backgroundColor: '#e9eef5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '48px',
-                  color: '#4b5563',
-                  border: '3px solid #ddd'
+      <div style={{ backgroundColor: '#fff', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e5e7eb', overflow: 'hidden', position: 'relative' }}>
+        {/* 헤더 이미지 섹션 */}
+        <div style={{ position: 'relative', width: '100%', height: '200px', backgroundColor: profile.header_image ? 'transparent' : '#94a3b8' }}>
+          {profile.header_image ? (
+            <img
+              src={profile.header_image}
+              alt="헤더"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '48px', pointerEvents: 'none' }}>
+              🌟
+            </div>
+          )}
+          {isOwnProfile && (
+            <div style={{ position: 'absolute', bottom: '10px', right: '10px', zIndex: 20, pointerEvents: 'auto' }}>
+              <input
+                id="header-image-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setHeaderImageFile(file);
+                  if (file) {
+                    setHeaderImagePreview(URL.createObjectURL(file));
+                  } else {
+                    setHeaderImagePreview(null);
+                  }
                 }}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => document.getElementById('header-image-input').click()}
+                style={{ 
+                  padding: '8px 12px', 
+                  cursor: 'pointer', 
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)', 
+                  color: '#fff', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  fontWeight: '600', 
+                  fontSize: '12px', 
+                  backdropFilter: 'blur(4px)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.8)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.6)'}
               >
-                {profile.display_name.slice(0, 1)}
-              </div>
-            )}
-            {isOwnProfile && (
-              <div style={{ marginTop: '15px' }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setProfileImageFile(file);
-                    if (file) {
-                      setProfileImagePreview(URL.createObjectURL(file));
-                    } else {
-                      setProfileImagePreview(null);
-                    }
-                  }}
-                  style={{ fontSize: '12px' }}
+                📷 헤더 변경
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 헤더 이미지 미리보기 및 저장 */}
+        {isOwnProfile && headerImagePreview && (
+          <div style={{ padding: '15px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', position: 'relative', zIndex: 20, pointerEvents: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img
+                src={headerImagePreview}
+                alt="헤더 미리보기"
+                style={{ width: '100px', height: '50px', borderRadius: '6px', objectFit: 'cover' }}
+              />
+              <button
+                onClick={handleHeaderImageUpload}
+                style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
+              >
+                💾 헤더 저장
+              </button>
+              <button
+                onClick={() => {
+                  setHeaderImageFile(null);
+                  setHeaderImagePreview(null);
+                }}
+                style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
+              >
+                ❌ 취소
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 프로필 정보 섹션 */}
+        <div style={{ padding: '30px', position: 'relative', marginTop: '-50px' }}>
+          <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+            <div style={{ position: 'relative' }}>
+              {profile.profile_image ? (
+                <img
+                  src={profile.profile_image}
+                  alt="프로필"
+                  style={{ width: '150px', height: '150px', borderRadius: '50%', objectFit: 'cover', border: '5px solid #fff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}
                 />
-                {profileImagePreview && (
-                  <div style={{ marginTop: '10px' }}>
-                    <img
-                      src={profileImagePreview}
-                      alt="미리보기"
-                      style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }}
+              ) : (
+                <div
+                  style={{
+                    width: '150px',
+                    height: '150px',
+                    borderRadius: '50%',
+                    backgroundColor: '#e9eef5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '48px',
+                    color: '#4b5563',
+                    border: '5px solid #fff',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  {profile.display_name.slice(0, 1)}
+                </div>
+              )}
+              {isOwnProfile && (
+                <div style={{ marginTop: '15px' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setProfileImageFile(file);
+                      if (file) {
+                        setProfileImagePreview(URL.createObjectURL(file));
+                      } else {
+                        setProfileImagePreview(null);
+                      }
+                    }}
+                    style={{ fontSize: '12px' }}
+                  />
+                  {profileImagePreview && (
+                    <div style={{ marginTop: '10px' }}>
+                      <img
+                        src={profileImagePreview}
+                        alt="미리보기"
+                        style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                      <button
+                        onClick={handleProfileImageUpload}
+                        style={{ display: 'block', marginTop: '8px', padding: '8px 12px', cursor: 'pointer', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '12px', transition: 'all 0.2s' }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
+                      >
+                        💾 저장
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, marginTop: '50px' }}>
+              {isOwnProfile && isEditingProfile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px' }}>닉네임</label>
+                    <input
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
                     />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px' }}>@이름</label>
+                    <input
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px' }}>소개</label>
+                    <textarea
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      style={{ width: '100%', minHeight: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
                     <button
-                      onClick={handleProfileImageUpload}
-                      style={{ display: 'block', marginTop: '8px', padding: '5px 10px', cursor: 'pointer' }}
+                      onClick={handleProfileUpdate}
+                      style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600' }}
                     >
-                      저장
+                      💾 저장
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingProfile(false);
+                        setEditDisplayName(profile.display_name || '');
+                        setEditUsername(profile.username || '');
+                        setEditBio(profile.bio || '');
+                      }}
+                      style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600' }}
+                    >
+                      ❌ 취소
                     </button>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2>{profile.display_name}</h2>
-            <p style={{ color: '#666', marginTop: '5px' }}>@{profile.username}</p>
-            {profile.bio && <p style={{ marginTop: '15px', fontSize: '16px' }}>{profile.bio}</p>}
-            <p style={{ marginTop: '10px', color: '#888', fontSize: '14px' }}>
-              가입일: {new Date(profile.created_at).toLocaleDateString()}
-            </p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h2 style={{ color: displayNameColor, margin: 0 }}>{profile.display_name}</h2>
+                    {isOwnProfile && (
+                      <button
+                        onClick={() => setIsEditingProfile(true)}
+                        style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px', fontWeight: '600', fontSize: '12px' }}
+                      >
+                        ✏️ 프로필 편집
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ color: '#666', marginTop: '5px' }}>@{profile.username}</p>
+                  {profile.bio && <p style={{ marginTop: '15px', fontSize: '16px' }}>{profile.bio}</p>}
+                  <p style={{ marginTop: '10px', color: '#888', fontSize: '14px' }}>
+                    가입일: {new Date(profile.created_at).toLocaleDateString()}
+                  </p>
+                </>
+              )}
+              {isOwnProfile && (
+                <div style={{ marginTop: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>닉네임 색상:</label>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {['#000000', '#ef4444', '#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'].map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => handleDisplayNameColorChange(color)}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          backgroundColor: color,
+                          border: displayNameColor === color ? '3px solid #000' : '2px solid #ccc',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -219,8 +497,8 @@ function Profile() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
         {/* 게시글 목록 */}
         <div>
-          <h2>게시글 ({posts.length})</h2>
-          {posts.length === 0 && <p style={{ color: '#888' }}>작성한 게시글이 없습니다.</p>}
+          <h2>📝 게시글 ({posts.length})</h2>
+          {posts.length === 0 && <p style={{ color: '#888' }}>📭 작성한 게시글이 없습니다.</p>}
           {displayedPosts.map((post) => (
             <div
               key={post.id}
@@ -277,14 +555,24 @@ function Profile() {
                 <button
                   onClick={() => setCurrentPage((prev) => prev - 1)}
                   style={{
-                    padding: '8px 12px',
+                    padding: '10px 12px',
                     cursor: 'pointer',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
                     backgroundColor: '#fff',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f3f4f6';
+                    e.target.style.borderColor = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#fff';
+                    e.target.style.borderColor = '#e5e7eb';
                   }}
                 >
-                  이전
+                  ◀ 이전
                 </button>
               )}
 
@@ -312,13 +600,24 @@ function Profile() {
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
                     style={{
-                      padding: '8px 12px',
+                      padding: '10px 12px',
                       cursor: 'pointer',
-                      border: currentPage === pageNum ? '2px solid #2563eb' : '1px solid #ddd',
-                      borderRadius: '4px',
-                      backgroundColor: currentPage === pageNum ? '#eff6ff' : '#fff',
-                      fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                      color: currentPage === pageNum ? '#2563eb' : '#000',
+                      border: currentPage === pageNum ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      backgroundColor: currentPage === pageNum ? '#dbeafe' : '#fff',
+                      fontWeight: currentPage === pageNum ? '700' : '600',
+                      color: currentPage === pageNum ? '#2563eb' : '#6b7280',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentPage !== pageNum) {
+                        e.target.style.backgroundColor = '#f3f4f6';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentPage !== pageNum) {
+                        e.target.style.backgroundColor = '#fff';
+                      }
                     }}
                   >
                     {pageNum}
@@ -330,14 +629,24 @@ function Profile() {
                 <button
                   onClick={() => setCurrentPage((prev) => prev + 1)}
                   style={{
-                    padding: '8px 12px',
+                    padding: '10px 12px',
                     cursor: 'pointer',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
                     backgroundColor: '#fff',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f3f4f6';
+                    e.target.style.borderColor = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#fff';
+                    e.target.style.borderColor = '#e5e7eb';
                   }}
                 >
-                  다음
+                  다음 ▶
                 </button>
               )}
             </div>
@@ -346,7 +655,7 @@ function Profile() {
 
         {/* 방명록 */}
         <div>
-          <h2>방명록 ({guestbook.length})</h2>
+          <h2>📖 방명록 ({guestbook.length})</h2>
           <form onSubmit={handleGuestbookSubmit} style={{ marginTop: '15px' }}>
             <textarea
               value={guestbookInput}
@@ -356,13 +665,15 @@ function Profile() {
             />
             <button
               type="submit"
-              style={{ marginTop: '8px', padding: '8px 16px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px' }}
+              style={{ marginTop: '10px', padding: '10px 16px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
             >
-              방명록 작성
+              📝 방명록 작성
             </button>
           </form>
 
-          {guestbook.length === 0 && <p style={{ color: '#888', marginTop: '15px' }}>아직 방명록이 없습니다.</p>}
+          {guestbook.length === 0 && <p style={{ color: '#888', marginTop: '15px' }}>📭 아직 방명록이 없습니다.</p>}
           {guestbook.map((entry) => (
             <div key={entry.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginTop: '15px', backgroundColor: '#fff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -391,7 +702,11 @@ function Profile() {
                     </div>
                   )}
                   <div>
-                    <strong>{entry.author_display_name}</strong>
+                    {entry.author_id === currentUser.id ? (
+                      <strong style={{ color: displayNameColor }}>{entry.author_display_name}</strong>
+                    ) : (
+                      <strong style={{ cursor: 'pointer', color: '#2563eb', transition: 'all 0.2s' }} onClick={() => navigate(`/profile/${entry.author_id}`)} onMouseEnter={(e) => e.target.style.textDecoration = 'underline'} onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>{entry.author_display_name}</strong>
+                    )}
                     <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
                       {new Date(entry.created_at).toLocaleString()}
                     </span>
@@ -401,11 +716,21 @@ function Profile() {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {editingEntryId === entry.id ? (
                       <>
-                        <button onClick={() => handleGuestbookUpdate(entry.id)} style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none' }}>
-                          저장
+                        <button
+                          onClick={() => handleGuestbookUpdate(entry.id)}
+                          style={{ cursor: 'pointer', color: '#10b981', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                          onMouseLeave={(e) => e.target.style.opacity = '1'}
+                        >
+                          ✅ 저장
                         </button>
-                        <button onClick={() => setEditingEntryId(null)} style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none' }}>
-                          취소
+                        <button
+                          onClick={() => setEditingEntryId(null)}
+                          style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                          onMouseLeave={(e) => e.target.style.opacity = '1'}
+                        >
+                          ❌ 취소
                         </button>
                       </>
                     ) : (
@@ -415,12 +740,19 @@ function Profile() {
                             setEditingEntryId(entry.id);
                             setEditingContent(entry.content);
                           }}
-                          style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none' }}
+                          style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                          onMouseLeave={(e) => e.target.style.opacity = '1'}
                         >
-                          수정
+                          ✏️ 수정
                         </button>
-                        <button onClick={() => handleGuestbookDelete(entry.id)} style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none' }}>
-                          삭제
+                        <button
+                          onClick={() => handleGuestbookDelete(entry.id)}
+                          style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                          onMouseLeave={(e) => e.target.style.opacity = '1'}
+                        >
+                          🗑️ 삭제
                         </button>
                       </>
                     )}

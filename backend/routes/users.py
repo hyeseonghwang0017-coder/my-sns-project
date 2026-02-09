@@ -1,13 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
-from models.user import UserCreate, UserLogin, UserResponse, Token
+from models.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token
 from utils.auth import hash_password, verify_password, create_access_token, get_current_user
+from utils.database import get_db
 from datetime import datetime
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
-
-def get_db(request):
-    return request.app.mongodb
 
 # 회원가입
 @router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -49,8 +47,10 @@ async def signup(user: UserCreate, request: Request):
         username=user_dict["username"],
         email=user_dict["email"],
         display_name=user_dict["display_name"],
+        display_name_color=user_dict.get("display_name_color", "#000000"),
         bio=user_dict["bio"],
         profile_image=user_dict["profile_image"],
+        header_image=user_dict.get("header_image"),
         created_at=user_dict["created_at"]
     )
     
@@ -75,8 +75,10 @@ async def login(user: UserLogin, request: Request):
         username=db_user["username"],
         email=db_user["email"],
         display_name=db_user["display_name"],
+        display_name_color=db_user.get("display_name_color", "#000000"),
         bio=db_user.get("bio"),
         profile_image=db_user.get("profile_image"),
+        header_image=db_user.get("header_image"),
         created_at=db_user["created_at"]
     )
     
@@ -96,7 +98,89 @@ async def get_my_profile(request: Request, user_id: str = Depends(get_current_us
         username=user["username"],
         email=user["email"],
         display_name=user["display_name"],
+        display_name_color=user.get("display_name_color", "#000000"),
         bio=user.get("bio"),
         profile_image=user.get("profile_image"),
+        header_image=user.get("header_image"),
         created_at=user["created_at"]
     )
+
+# 내 프로필 수정
+@router.put("/me", response_model=UserResponse)
+async def update_my_profile(payload: UserUpdate, request: Request, user_id: str = Depends(get_current_user)):
+    db = get_db(request)
+
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    updates = {}
+
+    if payload.username is not None:
+        username = payload.username.strip()
+        if username == "":
+            raise HTTPException(status_code=400, detail="Username cannot be empty")
+        if username != user["username"]:
+            existing_username = await db.users.find_one({"username": username})
+            if existing_username:
+                raise HTTPException(status_code=400, detail="Username already taken")
+        updates["username"] = username
+
+    if payload.display_name is not None:
+        display_name = payload.display_name.strip()
+        if display_name == "":
+            raise HTTPException(status_code=400, detail="Display name cannot be empty")
+        updates["display_name"] = display_name
+
+    if payload.bio is not None:
+        updates["bio"] = payload.bio
+
+    if updates:
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": updates}
+        )
+
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    return UserResponse(
+        id=str(user["_id"]),
+        username=user["username"],
+        email=user["email"],
+        display_name=user["display_name"],
+        display_name_color=user.get("display_name_color", "#000000"),
+        bio=user.get("bio"),
+        profile_image=user.get("profile_image"),
+        header_image=user.get("header_image"),
+        created_at=user["created_at"]
+    )
+
+# 모든 유저 목록 조회 (닉네임, 프로필 사진만)
+@router.get("/list", response_model=list[UserResponse])
+async def get_all_users(request: Request, limit: int = 50):
+    db = get_db(request)
+    
+    # 제외할 테스트 계정 목록
+    excluded_usernames = ["fish", "fox", "fox2", "dog", "dog2", "cat", "test", "테스트유저", "duck", "test123"]
+    excluded_emails = ["testuser@test123", "테스트유저@test123"]
+    
+    # 테스트 계정을 제외하고 생성일 기준 최신순으로 유저 목록 조회
+    cursor = db.users.find({
+        "username": {"$nin": excluded_usernames},
+        "email": {"$nin": excluded_emails}
+    }).sort("created_at", -1).limit(limit)
+    users = await cursor.to_list(length=limit)
+    
+    return [
+        UserResponse(
+            id=str(user["_id"]),
+            username=user["username"],
+            email=user["email"],
+            display_name=user["display_name"],
+            display_name_color=user.get("display_name_color", "#000000"),
+            bio=user.get("bio"),
+            profile_image=user.get("profile_image"),
+            header_image=user.get("header_image"),
+            created_at=user["created_at"]
+        )
+        for user in users
+    ]

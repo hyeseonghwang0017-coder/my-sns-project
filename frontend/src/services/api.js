@@ -4,9 +4,6 @@ const API_URL = process.env.REACT_APP_API_URL
   ? `${process.env.REACT_APP_API_URL}/api`
   : 'http://127.0.0.1:8000/api';
 
-console.log('API_URL:', API_URL);
-console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -31,28 +28,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('API Error Details:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.error('API Error:', error.response?.data || error.message);
+    }
     return Promise.reject(error);
   }
 );
 
 // 회원가입
 export const signup = async (userData) => {
-  console.log('Signup request to:', API_URL + '/users/signup');
-  console.log('Signup data:', userData);
   try {
     const response = await api.post('/users/signup', userData);
-    console.log('Signup response:', response);
     return response.data;
   } catch (error) {
-    console.error('Signup error:', error);
-    console.error('Error response:', error.response);
-    console.error('Error data:', error.response?.data);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Signup error:', error.response?.data);
+    }
     throw error;
   }
 };
@@ -69,9 +60,25 @@ export const getMyProfile = async () => {
   return response.data;
 };
 
+// 내 프로필 수정
+export const updateMyProfile = async (payload) => {
+  const response = await api.put('/users/me', payload);
+  return response.data;
+};
+
+// 모든 유저 목록 조회
+export const getAllUsers = async (limit = 50) => {
+  const response = await api.get('/users/list', { params: { limit } });
+  return response.data;
+};
+
 // 게시글 목록
-export const getPosts = async (page = 1, limit = 10) => {
-  const response = await api.get('/posts', { params: { page, limit } });
+export const getPosts = async (page = 1, limit = 10, category = null) => {
+  const params = { page, limit };
+  if (category) {
+    params.category = category;
+  }
+  const response = await api.get('/posts', { params });
   return response.data;
 };
 
@@ -157,6 +164,20 @@ export const updateProfileImage = async (userId, imageUrl) => {
   const response = await api.put(`/profiles/${userId}/profile-image`, { image_url: imageUrl }, {
     params: { image_url: imageUrl }
   });
+  return response.data;
+};
+
+// 헤더 이미지 업데이트
+export const updateHeaderImage = async (userId, imageUrl) => {
+  const response = await api.put(`/profiles/${userId}/header-image`, { image_url: imageUrl }, {
+    params: { image_url: imageUrl }
+  });
+  return response.data;
+};
+
+// 닉네임 색깔 업데이트
+export const updateDisplayNameColor = async (userId, color) => {
+  const response = await api.put(`/profiles/${userId}/display-name-color`, { color });
   return response.data;
 };
 
