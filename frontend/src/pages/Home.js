@@ -645,58 +645,6 @@ function Home() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '20px auto', padding: '20px' }}>
-      {/* 모바일에서만 상단에 멤버 목록 표시 */}
-      {windowWidth < 1024 && (
-        <div style={{ marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-            👥 멤버 ({allUsers.length})
-          </h3>
-          {allUsers.length === 0 ? (
-            <p style={{ color: '#888', fontSize: '13px', textAlign: 'center', margin: 0 }}>멤버가 없습니다.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {allUsers.map((member) => (
-                <div
-                  key={member.id}
-                  onClick={() => navigate(`/profile/${member.id}`)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '6px 8px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    backgroundColor: member.id === user.id ? '#eff6ff' : 'transparent',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = member.id === user.id ? '#eff6ff' : 'transparent'; }}
-                >
-                  <AvatarBubble
-                    profileImage={member.profile_image}
-                    displayName={member.display_name || member.username}
-                    userId={member.id}
-                    size="32px"
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: '600', fontSize: '13px', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {member.display_name || member.username}
-                      {member.id === user.id && <span style={{ marginLeft: '4px', fontSize: '11px', color: '#2563eb', fontWeight: '500' }}>(나)</span>}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#9ca3af', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      @{member.username}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      
-      <div style={{ display: 'flex', gap: '20px', flexWrap: windowWidth < 1024 ? 'wrap' : 'nowrap' }}>
-      {/* 메인 컨텐츠 영역 */}
-      <div style={{ flex: 1, minWidth: 0, width: windowWidth < 1024 ? '100%' : 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '10px' }}>
           <h1>GGame 홈</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -728,6 +676,81 @@ function Home() {
         >
           🔍 내 프로필 페이지로
         </button>
+      </div>
+
+      {/* 유저 목록 섹션 */}
+      <div style={{ marginTop: '30px', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+          👥 멤버 목록 ({allUsers.length})
+        </h2>
+        
+        {allUsers.length === 0 ? (
+          <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', margin: '20px 0' }}>멤버가 없습니다.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {allUsers.map((member) => (
+              <div
+                key={member.id}
+                onClick={() => navigate(`/profile/${member.id}`)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  backgroundColor: member.id === user.id ? '#eff6ff' : 'transparent',
+                  border: '1px solid #e5e7eb',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = member.id === user.id ? '#eff6ff' : 'transparent';
+                }}
+              >
+                <AvatarBubble
+                  profileImage={member.profile_image}
+                  displayName={member.display_name || member.username}
+                  userId={member.id}
+                  size="40px"
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ 
+                    fontWeight: '600', 
+                    fontSize: '14px',
+                    color: '#111827',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {member.display_name || member.username}
+                    {member.id === user.id && (
+                      <span style={{ 
+                        marginLeft: '6px', 
+                        fontSize: '12px', 
+                        color: '#2563eb',
+                        fontWeight: '500'
+                      }}>
+                        (나)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#9ca3af',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    @{member.username}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: '30px', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
@@ -1121,93 +1144,6 @@ function Home() {
             <p>로딩 중...</p>
           </div>
         )}
-      </div>
-      
-    </div>
-
-    {/* 오른쪽 유저 리스트 사이드바 */}
-    <div style={{ display: windowWidth < 1024 ? 'none' : 'block', width: '260px', flexShrink: 0, minWidth: 0 }}>
-      <div style={{ 
-        position: 'sticky', 
-        top: '20px',
-        backgroundColor: '#fff', 
-        padding: '15px', 
-        borderRadius: '10px', 
-        border: '1px solid #e5e7eb',
-        maxHeight: windowWidth < 1024 ? 'none' : 'calc(100vh - 40px)',
-        overflowY: 'auto'
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-          👥 멤버 ({allUsers.length})
-        </h3>
-        
-        {allUsers.length === 0 ? (
-          <p style={{ color: '#888', fontSize: '13px', textAlign: 'center' }}>멤버가 없습니다.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {allUsers.map((member) => (
-              <div
-                key={member.id}
-                onClick={() => navigate(`/profile/${member.id}`)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 8px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  backgroundColor: member.id === user.id ? '#eff6ff' : 'transparent',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = member.id === user.id ? '#eff6ff' : 'transparent';
-                }}
-              >
-                <AvatarBubble
-                  profileImage={member.profile_image}
-                  displayName={member.display_name || member.username}
-                  userId={member.id}
-                  size="32px"
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ 
-                    fontWeight: '600', 
-                    fontSize: '13px',
-                    color: '#111827',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {member.display_name || member.username}
-                    {member.id === user.id && (
-                      <span style={{ 
-                        marginLeft: '4px', 
-                        fontSize: '11px', 
-                        color: '#2563eb',
-                        fontWeight: '500'
-                      }}>
-                        (나)
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: '#9ca3af',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      @{member.username}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
       </div>
     </div>
   );
