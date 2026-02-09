@@ -278,7 +278,6 @@ function Home() {
   const [replyImageInputs, setReplyImageInputs] = useState({});
   const [replyingTo, setReplyingTo] = useState(null);
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [expandedComments, setExpandedComments] = useState({});
   const [postImagePreview, setPostImagePreview] = useState(null);
   const [commentImagePreviews, setCommentImagePreviews] = useState({});
@@ -290,16 +289,6 @@ function Home() {
   const location = useLocation();
   
   const categories = ['전체', '공지', '일상', '영화', '게임'];
-
-  // 윈도우 리사이즈 처리
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
