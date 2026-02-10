@@ -16,6 +16,7 @@ import {
 } from '../services/api';
 import NotificationBell from '../components/NotificationBell';
 import AvatarBubble from '../components/AvatarBubble';
+import { formatToKSTShort } from '../utils/dateFormatter';
 
 function Profile() {
   const { userId } = useParams();
@@ -462,7 +463,7 @@ function Profile() {
                   <p style={{ color: '#666', marginTop: '5px' }}>@{profile.username}</p>
                   {profile.bio && <p style={{ marginTop: '15px', fontSize: '16px' }}>{profile.bio}</p>}
                   <p style={{ marginTop: '10px', color: '#888', fontSize: '14px' }}>
-                    가입일: {new Date(profile.created_at).toLocaleDateString()}
+                    가입일: {formatToKSTShort(profile.created_at)}
                   </p>
                 </>
               )}
@@ -531,7 +532,7 @@ function Profile() {
                 <div>
                   <strong>{post.author_display_name || post.author_username}</strong>
                   <div style={{ color: '#888', fontSize: '12px' }}>
-                    {new Date(post.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                    {formatToKSTShort(entry.created_at)}
                   </div>
                 </div>
               </div>

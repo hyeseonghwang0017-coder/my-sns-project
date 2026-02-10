@@ -21,6 +21,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import EmojiPicker from 'emoji-picker-react';
 import linkifyHtml from 'linkify-html';
+import { formatToKSTShort } from '../utils/dateFormatter';
 
 const renderContentWithLinks = (text) => {
   if (!text) return null;
@@ -151,7 +152,7 @@ function CommentItem({
                 <strong style={{ color: comment.author_display_name_color || '#000000' }}>{comment.author_display_name || comment.author_username}</strong>
               </div>
               <span style={{ marginLeft: '36px', color: '#9aa0a6', fontSize: '12px' }}>
-                {new Date(comment.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                {formatToKSTShort(comment.created_at)}
               </span>
               {comment.updated_at && (
                 <span style={{ marginLeft: '8px', color: '#9aa0a6', fontSize: '12px' }}>
@@ -1054,7 +1055,7 @@ function Home() {
                   <div>
                     <strong style={{ color: post.author_display_name_color || '#000000' }}>{post.author_display_name || post.author_username}</strong>
                     <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
-                      {new Date(post.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                      {formatToKSTShort(post.created_at)}
                     </span>
                     {post.updated_at && (
                       <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>

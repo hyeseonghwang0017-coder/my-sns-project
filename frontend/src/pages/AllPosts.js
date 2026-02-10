@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPosts, getPostsCount } from '../services/api';
 import AvatarBubble from '../components/AvatarBubble';
+import { formatToKSTShort } from '../utils/dateFormatter';
 
 function AllPosts() {
   const [posts, setPosts] = useState([]);
@@ -255,7 +256,7 @@ function AllPosts() {
               <div>
                 <strong style={{ color: post.author_display_name_color || '#000000' }}>{post.author_display_name || post.author_username}</strong>
                 <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
-                  {new Date(post.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                    {formatToKSTShort(post.created_at)}
                 </span>
               </div>
             </div>
