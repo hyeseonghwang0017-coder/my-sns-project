@@ -532,7 +532,7 @@ function Profile() {
                 <div>
                   <strong>{post.author_display_name || post.author_username}</strong>
                   <div style={{ color: '#888', fontSize: '12px' }}>
-                    {formatToKSTShort(entry.created_at)}
+                    {formatToKSTShort(post.created_at)}
                   </div>
                 </div>
               </div>
