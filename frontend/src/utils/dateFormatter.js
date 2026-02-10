@@ -33,16 +33,13 @@ export const formatToKSTShort = (utcDateString) => {
   
   try {
     const utcDate = new Date(utcDateString);
-    const options = {
-      timeZone: 'Asia/Seoul',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    };
     
-    return utcDate.toLocaleString('ko-KR', options);
+    // toLocaleString으로 한국 시간 형식으로 얻기
+    const dateStr = utcDate.toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul'
+    });
+    
+    return dateStr;
   } catch (error) {
     console.error('Date formatting error:', error);
     return utcDateString;
