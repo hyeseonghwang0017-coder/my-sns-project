@@ -3,10 +3,16 @@ from models.guestbook import GuestbookCreate, GuestbookUpdate, GuestbookResponse
 from utils.auth import get_current_user
 from utils.database import get_db, parse_object_id
 from typing import Dict
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/profiles", tags=["Profiles"])
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 # 사용자 프로필 조회
 @router.get("/{user_id}")
@@ -167,8 +173,8 @@ async def get_guestbook(user_id: str, request: Request):
             author_display_name_color=author_map.get(entry["author_id"], {}).get("display_name_color", "#000000"),
             author_profile_image=author_map.get(entry["author_id"], {}).get("profile_image", entry.get("author_profile_image")),
             content=entry["content"],
-            created_at=entry["created_at"],
-            updated_at=entry.get("updated_at"),
+            created_at=ensure_utc(entry["created_at"]),
+            updated_at=ensure_utc(entry.get("updated_at")),
         )
         for entry in entries
     ]
@@ -199,7 +205,7 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
         "author_display_name_color": author.get("display_name_color"),
         "author_profile_image": author.get("profile_image"),
         "content": payload.content,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None,
     }
     
@@ -218,7 +224,7 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
             "comment_id": None,
             "message": f"{author['display_name']}님이 방명록에 글을 남겼습니다.",
             "is_read": False,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         })
     
@@ -231,8 +237,8 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
         author_display_name_color=entry_doc.get("author_display_name_color"),
         author_profile_image=entry_doc.get("author_profile_image"),
         content=entry_doc["content"],
-        created_at=entry_doc["created_at"],
-        updated_at=entry_doc.get("updated_at"),
+        created_at=ensure_utc(entry_doc["created_at"]),
+        updated_at=ensure_utc(entry_doc.get("updated_at")),
     )
 
 # 방명록 수정
@@ -247,7 +253,7 @@ async def update_guestbook_entry(user_id: str, entry_id: str, payload: Guestbook
     if entry["author_id"] != current_user_id:
         raise HTTPException(status_code=403, detail="Not allowed")
     
-    updated_at = datetime.utcnow()
+    updated_at = datetime.now(timezone.utc)
     await db.guestbook.update_one(
         {"_id": entry["_id"]},
         {"$set": {"content": payload.content, "updated_at": updated_at}}
@@ -265,8 +271,8 @@ async def update_guestbook_entry(user_id: str, entry_id: str, payload: Guestbook
         author_display_name_color=entry.get("author_display_name_color"),
         author_profile_image=entry.get("author_profile_image"),
         content=entry["content"],
-        created_at=entry["created_at"],
-        updated_at=entry.get("updated_at"),
+        created_at=ensure_utc(entry["created_at"]),
+        updated_at=ensure_utc(entry.get("updated_at")),
     )
 
 # 방명록 삭제

@@ -2,10 +2,16 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from models.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token
 from utils.auth import hash_password, verify_password, create_access_token, get_current_user
 from utils.database import get_db
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 # 회원가입
 @router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -30,7 +36,7 @@ async def signup(user: UserCreate, request: Request):
         "display_name": user.display_name,
         "bio": user.bio,
         "profile_image": None,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "followers": [],
         "following": []
     }
@@ -51,7 +57,7 @@ async def signup(user: UserCreate, request: Request):
         bio=user_dict["bio"],
         profile_image=user_dict["profile_image"],
         header_image=user_dict.get("header_image"),
-        created_at=user_dict["created_at"]
+        created_at=ensure_utc(user_dict["created_at"])
     )
     
     return Token(access_token=access_token, token_type="bearer", user=user_response)
@@ -79,7 +85,7 @@ async def login(user: UserLogin, request: Request):
         bio=db_user.get("bio"),
         profile_image=db_user.get("profile_image"),
         header_image=db_user.get("header_image"),
-        created_at=db_user["created_at"]
+        created_at=ensure_utc(db_user["created_at"])
     )
     
     return Token(access_token=access_token, token_type="bearer", user=user_response)
@@ -102,7 +108,7 @@ async def get_my_profile(request: Request, user_id: str = Depends(get_current_us
         bio=user.get("bio"),
         profile_image=user.get("profile_image"),
         header_image=user.get("header_image"),
-        created_at=user["created_at"]
+        created_at=ensure_utc(user["created_at"])
     )
 
 # 내 프로필 수정
@@ -151,7 +157,7 @@ async def update_my_profile(payload: UserUpdate, request: Request, user_id: str 
         bio=user.get("bio"),
         profile_image=user.get("profile_image"),
         header_image=user.get("header_image"),
-        created_at=user["created_at"]
+        created_at=ensure_utc(user["created_at"])
     )
 
 # 모든 유저 목록 조회 (닉네임, 프로필 사진만)
@@ -180,7 +186,7 @@ async def get_all_users(request: Request, limit: int = 50):
             bio=user.get("bio"),
             profile_image=user.get("profile_image"),
             header_image=user.get("header_image"),
-            created_at=user["created_at"]
+            created_at=ensure_utc(user["created_at"])
         )
         for user in users
     ]

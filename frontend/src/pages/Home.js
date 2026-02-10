@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   getMyProfile,
   getPosts,
@@ -17,6 +17,10 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import AvatarBubble from '../components/AvatarBubble';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import EmojiPicker from 'emoji-picker-react';
+import linkifyHtml from 'linkify-html';
 
 const renderContentWithLinks = (text) => {
   if (!text) return null;
@@ -147,7 +151,7 @@ function CommentItem({
                 <strong style={{ color: comment.author_display_name_color || '#000000' }}>{comment.author_display_name || comment.author_username}</strong>
               </div>
               <span style={{ marginLeft: '36px', color: '#9aa0a6', fontSize: '12px' }}>
-                {new Date(comment.created_at).toLocaleString()}
+                {new Date(comment.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
               </span>
               {comment.updated_at && (
                 <span style={{ marginLeft: '8px', color: '#9aa0a6', fontSize: '12px' }}>
@@ -321,6 +325,8 @@ function Home() {
   const [editingContent, setEditingContent] = useState('');
   const [editingCategory, setEditingCategory] = useState('일상');
   const [error, setError] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
   const [commentImageInputs, setCommentImageInputs] = useState({});
@@ -335,10 +341,26 @@ function Home() {
   const [highlightedPostId, setHighlightedPostId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [allUsers, setAllUsers] = useState([]);
+  const [isMembersCollapsed, setIsMembersCollapsed] = useState(true);
+  const postEditorRef = useRef(null);
+  const editEditorRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   
   const categories = ['전체', '공지', '일상', '영화', '게임'];
+
+  const insertEmojiAtCursor = (editorRef, value, setValue, emoji) => {
+    const quill = editorRef.current?.getEditor?.();
+    if (quill) {
+      const range = quill.getSelection(true);
+      const index = range ? range.index : quill.getLength();
+      quill.insertText(index, emoji, 'user');
+      quill.setSelection(index + emoji.length, 0, 'user');
+      setValue(quill.root.innerHTML);
+      return;
+    }
+    setValue((value || '') + emoji);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -468,7 +490,12 @@ function Home() {
     e.preventDefault();
     setError('');
 
-    const trimmed = postContent.trim();
+    // Quill의 HTML 내용에서 실제 텍스트만 추출
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = postContent;
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+    const trimmed = textContent.trim();
+    
     if (!trimmed && !postImageFile) {
       setError('내용 또는 이미지를 입력해주세요.');
       return;
@@ -482,7 +509,7 @@ function Home() {
       }
 
       const created = await createPost({
-        content: trimmed || undefined,
+        content: postContent || undefined,
         image_url: imageUrl || undefined,
         category: selectedCategory === '전체' ? '일상' : selectedCategory,
       });
@@ -490,6 +517,7 @@ function Home() {
       setPostContent('');
       setPostImageFile(null);
       setPostImagePreview(null);
+      setShowEmojiPicker(false);
     } catch (err) {
       setError(err.response?.data?.detail || '게시글 작성에 실패했습니다.');
     }
@@ -510,16 +538,22 @@ function Home() {
   };
 
   const handleUpdatePost = async (postId) => {
-    const trimmed = editingContent.trim();
+    // Quill의 HTML 내용에서 실제 텍스트만 추출
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = editingContent;
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+    const trimmed = textContent.trim();
+    
     if (!trimmed) {
       setError('내용을 입력해주세요.');
       return;
     }
 
     try {
-      const updated = await updatePost(postId, { content: trimmed, category: editingCategory });
+      const updated = await updatePost(postId, { content: editingContent, category: editingCategory });
       setPosts(posts.map((post) => (post.id === postId ? updated : post)));
       cancelEdit();
+      setShowEditEmojiPicker(false);
     } catch (err) {
       setError(err.response?.data?.detail || '게시글 수정에 실패했습니다.');
     }
@@ -721,76 +755,95 @@ function Home() {
 
       {/* 유저 목록 섹션 */}
       <div style={{ marginTop: '30px', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
-          👥 멤버 목록 ({allUsers.length})
-        </h2>
-        
-        {allUsers.length === 0 ? (
-          <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', margin: '20px 0' }}>멤버가 없습니다.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {allUsers.map((member) => (
-              <div
-                key={member.id}
-                onClick={() => navigate(`/profile/${member.id}`)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  backgroundColor: member.id === user.id ? '#eff6ff' : 'transparent',
-                  border: '1px solid #e5e7eb',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = member.id === user.id ? '#eff6ff' : 'transparent';
-                }}
-              >
-                <AvatarBubble
-                  profileImage={member.profile_image}
-                  displayName={member.display_name || member.username}
-                  userId={member.id}
-                  size="40px"
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ 
-                    fontWeight: '600', 
-                    fontSize: '14px',
-                    color: '#111827',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {member.display_name || member.username}
-                    {member.id === user.id && (
-                      <span style={{ 
-                        marginLeft: '6px', 
-                        fontSize: '12px', 
-                        color: '#2563eb',
-                        fontWeight: '500'
-                      }}>
-                        (나)
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ 
-                    fontSize: '12px', 
-                    color: '#9ca3af',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    @{member.username}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+          <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+            👥 멤버 목록 ({allUsers.length})
+          </h2>
+          <button
+            type="button"
+            onClick={() => setIsMembersCollapsed((prev) => !prev)}
+            style={{
+              cursor: 'pointer',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: '600'
+            }}
+          >
+            {isMembersCollapsed ? '펼치기' : '접기'}
+          </button>
+        </div>
+
+        {!isMembersCollapsed && (
+          allUsers.length === 0 ? (
+            <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', margin: '20px 0' }}>멤버가 없습니다.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {allUsers.map((member) => (
+                <div
+                  key={member.id}
+                  onClick={() => navigate(`/profile/${member.id}`)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    backgroundColor: member.id === user.id ? '#eff6ff' : 'transparent',
+                    border: '1px solid #e5e7eb',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = member.id === user.id ? '#eff6ff' : 'transparent';
+                  }}
+                >
+                  <AvatarBubble
+                    profileImage={member.profile_image}
+                    displayName={member.display_name || member.username}
+                    userId={member.id}
+                    size="40px"
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ 
+                      fontWeight: '600', 
+                      fontSize: '14px',
+                      color: '#111827',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {member.display_name || member.username}
+                      {member.id === user.id && (
+                        <span style={{ 
+                          marginLeft: '6px', 
+                          fontSize: '12px', 
+                          color: '#2563eb',
+                          fontWeight: '500'
+                        }}>
+                          (나)
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ 
+                      fontSize: '12px', 
+                      color: '#9ca3af',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      @{member.username}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </div>
 
@@ -845,12 +898,71 @@ function Home() {
         </div>
         
         <form onSubmit={handleCreatePost} style={{ marginTop: '10px' }}>
-          <textarea
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-            placeholder="게시글을 작성해주세요 💭"
-            style={{ width: '100%', minHeight: '100px', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: '14px' }}
-          />
+          <div style={{ position: 'relative', marginBottom: '12px' }}>
+            <ReactQuill
+              ref={postEditorRef}
+              value={postContent}
+              onChange={setPostContent}
+              placeholder="게시글을 작성해주세요 💭"
+              modules={{
+                toolbar: [
+                  ['bold', 'italic', 'underline', 'strike'],
+                  [{ 'align': [] }],
+                  [{ 'color': [] }, { 'background': [] }],
+                  ['link', 'image'],
+                ]
+              }}
+              style={{ width: '100%', minHeight: '220px', borderRadius: '8px', backgroundColor: '#fff' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              style={{
+                marginTop: '8px',
+                padding: '6px 12px',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              😊 이모지
+            </button>
+            {showEmojiPicker && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '42px',
+                  left: '0',
+                  zIndex: 10
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(false)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '12px'
+                    }}
+                  >
+                    닫기
+                  </button>
+                </div>
+                <EmojiPicker
+                  onEmojiClick={(emojiObject) => {
+                    insertEmojiAtCursor(postEditorRef, postContent, setPostContent, emojiObject.emoji);
+                  }}
+                  theme="light"
+                />
+              </div>
+            )}
+          </div>
           <input
             type="file"
             accept="image/*"
@@ -942,7 +1054,7 @@ function Home() {
                   <div>
                     <strong style={{ color: post.author_display_name_color || '#000000' }}>{post.author_display_name || post.author_username}</strong>
                     <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
-                      {new Date(post.created_at).toLocaleString()}
+                      {new Date(post.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
                     </span>
                     {post.updated_at && (
                       <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
@@ -1040,16 +1152,83 @@ function Home() {
                       ))}
                     </div>
                   </div>
-                  <textarea
-                    value={editingContent}
-                    onChange={(e) => setEditingContent(e.target.value)}
-                    style={{ width: '100%', minHeight: '80px', padding: '10px' }}
-                  />
+                  <div style={{ position: 'relative', marginBottom: '12px' }}>
+                    <ReactQuill
+                      ref={editEditorRef}
+                      value={editingContent}
+                      onChange={setEditingContent}
+                      placeholder="내용을 수정하세요"
+                      modules={{
+                        toolbar: [
+                          ['bold', 'italic', 'underline', 'strike'],
+                          [{ 'align': [] }],
+                          [{ 'color': [] }, { 'background': [] }],
+                          ['link', 'image'],
+                        ]
+                      }}
+                      style={{ width: '100%', minHeight: '80px', backgroundColor: '#fff' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
+                      style={{
+                        marginTop: '8px',
+                        padding: '6px 12px',
+                        backgroundColor: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      😊 이모지
+                    </button>
+                    {showEditEmojiPicker && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '42px',
+                          left: '0',
+                          zIndex: 10
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowEditEmojiPicker(false)}
+                            style={{
+                              cursor: 'pointer',
+                              backgroundColor: '#f3f4f6',
+                              border: '1px solid #d1d5db',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '12px'
+                            }}
+                          >
+                            닫기
+                          </button>
+                        </div>
+                        <EmojiPicker
+                          onEmojiClick={(emojiObject) => {
+                            insertEmojiAtCursor(editEditorRef, editingContent, setEditingContent, emojiObject.emoji);
+                          }}
+                          theme="light"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </>
               ) : (
-                <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                  {renderContentWithLinks(post.content)}
-                </p>
+                <div
+                  className="post-content"
+                  style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '14px' }}
+                  dangerouslySetInnerHTML={{
+                    __html: linkifyHtml(post.content || '', {
+                      target: '_blank',
+                      rel: 'noopener noreferrer',
+                    })
+                  }}
+                />
               )}
 
               {post.image_url && (

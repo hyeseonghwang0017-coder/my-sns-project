@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import linkifyHtml from 'linkify-html';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getUserProfile,
@@ -530,11 +531,20 @@ function Profile() {
                 <div>
                   <strong>{post.author_display_name || post.author_username}</strong>
                   <div style={{ color: '#888', fontSize: '12px' }}>
-                    {new Date(post.created_at).toLocaleString()}
+                    {new Date(post.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
                   </div>
                 </div>
               </div>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{post.content}</p>
+              <div
+                className="post-content"
+                style={{ whiteSpace: 'pre-wrap' }}
+                dangerouslySetInnerHTML={{
+                  __html: linkifyHtml(post.content || '', {
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
+                  })
+                }}
+              />
               {post.image_url && (
                 <img
                   src={post.image_url}
@@ -722,7 +732,7 @@ function Profile() {
                       </strong>
                     )}
                     <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
-                      {new Date(entry.created_at).toLocaleString()}
+                      {new Date(entry.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
                     </span>
                   </div>
                 </div>

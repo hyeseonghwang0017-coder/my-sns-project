@@ -201,7 +201,7 @@ function NotificationBell() {
                       {notification.message}
                     </div>
                     <div style={{ fontSize: '12px', color: '#999' }}>
-                      {new Date(notification.created_at).toLocaleString()}
+                      {new Date(notification.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
                     </div>
                   </div>
                   <button

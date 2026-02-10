@@ -2,10 +2,16 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from models.notification import NotificationCreate, NotificationResponse, NotificationUpdate
 from utils.auth import get_current_user
 from utils.database import get_db, parse_object_id
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 def build_notification_response(notification) -> NotificationResponse:
     return NotificationResponse(
@@ -19,8 +25,8 @@ def build_notification_response(notification) -> NotificationResponse:
         comment_id=notification.get("comment_id"),
         message=notification["message"],
         is_read=notification.get("is_read", False),
-        created_at=notification["created_at"],
-        updated_at=notification.get("updated_at"),
+        created_at=ensure_utc(notification["created_at"]),
+        updated_at=ensure_utc(notification.get("updated_at")),
     )
 
 @router.get("/", response_model=list[NotificationResponse])
@@ -67,7 +73,7 @@ async def update_notification(
     if notification["recipient_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not allowed")
     
-    updates = {"updated_at": datetime.utcnow()}
+    updates = {"updated_at": datetime.now(timezone.utc)}
     if payload.is_read is not None:
         updates["is_read"] = payload.is_read
     
@@ -121,7 +127,7 @@ async def create_notification(payload: NotificationCreate, request: Request):
         "comment_id": payload.comment_id,
         "message": payload.message,
         "is_read": False,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None,
     }
     

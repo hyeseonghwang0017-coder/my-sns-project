@@ -255,7 +255,7 @@ function AllPosts() {
               <div>
                 <strong style={{ color: post.author_display_name_color || '#000000' }}>{post.author_display_name || post.author_username}</strong>
                 <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
-                  {new Date(post.created_at).toLocaleString()}
+                  {new Date(post.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
                 </span>
               </div>
             </div>

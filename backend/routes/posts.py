@@ -3,10 +3,16 @@ from models.post import PostCreate, PostUpdate, PostResponse
 from models.comment import CommentCreate, CommentUpdate, CommentResponse
 from utils.auth import get_current_user
 from utils.database import get_db, parse_object_id
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/posts", tags=["Posts"])
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 async def build_post_response(post, db=None) -> PostResponse:
     liked_by = post.get("liked_by", [])
@@ -40,8 +46,8 @@ async def build_post_response(post, db=None) -> PostResponse:
         category=post.get("category", "전체"),
         likes_count=len(liked_by),
         liked_by=liked_by,
-        created_at=post["created_at"],
-        updated_at=post.get("updated_at"),
+        created_at=ensure_utc(post["created_at"]),
+        updated_at=ensure_utc(post.get("updated_at")),
     )
 
 async def build_comment_response(comment, db=None) -> CommentResponse:
@@ -75,8 +81,8 @@ async def build_comment_response(comment, db=None) -> CommentResponse:
         content=comment.get("content", ""),
         image_url=comment.get("image_url"),
         is_deleted=comment.get("is_deleted", False),
-        created_at=comment["created_at"],
-        updated_at=comment.get("updated_at"),
+        created_at=ensure_utc(comment["created_at"]),
+        updated_at=ensure_utc(comment.get("updated_at")),
     )
 
 @router.post("/", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
@@ -105,7 +111,7 @@ async def create_post(payload: PostCreate, request: Request, user_id: str = Depe
         "image_url": payload.image_url,
         "category": category,
         "liked_by": [],
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None,
     }
 
@@ -161,7 +167,7 @@ async def update_post(post_id: str, payload: PostUpdate, request: Request, user_
     if post["author_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    updated_at = datetime.utcnow()
+    updated_at = datetime.now(timezone.utc)
     updates = {"updated_at": updated_at}
     if content is not None:
         updates["content"] = content
@@ -229,7 +235,7 @@ async def like_post(post_id: str, request: Request, user_id: str = Depends(get_c
             "comment_id": None,
             "message": f"{user['display_name']}님이 게시글에 좋아요를 눌렀습니다.",
             "is_read": False,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         })
 
@@ -306,7 +312,7 @@ async def create_comment(post_id: str, payload: CommentCreate, request: Request,
         "content": content,
         "image_url": payload.image_url,
         "is_deleted": False,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None,
     }
 
@@ -337,7 +343,7 @@ async def create_comment(post_id: str, payload: CommentCreate, request: Request,
             "comment_id": str(comment_doc["_id"]) if parent_id else None,
             "message": message,
             "is_read": False,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         })
     
@@ -360,7 +366,7 @@ async def update_comment(post_id: str, comment_id: str, payload: CommentUpdate, 
     if (content is None or content == "") and payload.image_url is None:
         raise HTTPException(status_code=400, detail="Content or image is required")
 
-    updated_at = datetime.utcnow()
+    updated_at = datetime.now(timezone.utc)
     updates = {"updated_at": updated_at}
     if content is not None:
         updates["content"] = content
@@ -399,7 +405,7 @@ async def delete_comment(post_id: str, comment_id: str, request: Request, user_i
                 "is_deleted": True,
                 "content": "",
                 "image_url": None,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(timezone.utc)
             }}
         )
     else:
