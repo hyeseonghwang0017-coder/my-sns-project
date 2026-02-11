@@ -1,0 +1,51 @@
+.like-list-popup {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid #e1e8ed;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 1000;
+  padding: 12px 0 8px 0;
+  font-size: 15px;
+}
+.like-list-title {
+  font-weight: bold;
+  padding: 0 16px 8px 16px;
+  color: #1da1f2;
+}
+.like-list-users {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.like-list-user {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.like-list-user:hover {
+  background: #f5f8fa;
+}
+.like-list-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+}
+.like-list-username {
+  font-weight: 500;
+  color: #222;
+}
+.like-list-empty {
+  color: #888;
+  text-align: center;
+  padding: 12px 0;
+}

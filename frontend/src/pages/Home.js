@@ -22,6 +22,8 @@ import 'react-quill/dist/quill.snow.css';
 import EmojiPicker from 'emoji-picker-react';
 import linkifyHtml from 'linkify-html';
 import { formatToKSTShort } from '../utils/dateFormatter';
+import LikeListPopup from '../components/LikeListPopup';
+// ...existing code...
 
 const renderContentWithLinks = (text) => {
   if (!text) return null;
@@ -315,6 +317,9 @@ function CommentItem({
 }
 
 function Home() {
+    // 좋아요 목록 팝업 상태
+    const [likeListPopup, setLikeListPopup] = useState({ open: false, users: [], anchor: null });
+    const likeButtonRefs = useRef({});
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1031,6 +1036,15 @@ function Home() {
           const liked = post.liked_by?.includes(user.id);
           const commentTree = buildCommentTree(commentsByPost[post.id] || []);
           const isHighlighted = highlightedPostId === post.id;
+          // 좋아요 누른 유저 정보 매핑
+          const likeUsers = (post.liked_by || [])
+            .map(uid => allUsers.find(u => u.id === uid))
+            .filter(Boolean)
+            .map(u => ({
+              id: u.id,
+              username: u.display_name || u.username,
+              avatarUrl: u.profile_image
+            }));
           return (
             <div
               key={post.id}
@@ -1042,6 +1056,7 @@ function Home() {
                 marginBottom: '15px',
                 backgroundColor: isHighlighted ? '#eff6ff' : 'white',
                 transition: 'all 0.3s ease',
+                position: 'relative', // 팝업 위치 기준
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -1122,7 +1137,22 @@ function Home() {
                 >
                   {liked ? '❤️' : '🤍'} {liked ? '\u00a0좋아요 취소' : '\u00a0좋아요'}
                 </button>
-                <span style={{ color: '#ef4444', fontWeight: '600', fontSize: '12px' }}>❤️ {post.likes_count || 0}</span>
+                <span
+                  ref={el => { likeButtonRefs.current[post.id] = el; }}
+                  style={{ color: '#ef4444', fontWeight: '600', fontSize: '12px', cursor: 'pointer', position: 'relative' }}
+                  onClick={() => setLikeListPopup({ open: true, users: likeUsers, anchor: post.id })}
+                  title="마음 누른 사람 보기"
+                >
+                  ❤️ {post.likes_count || 0}
+                </span>
+                {/* 좋아요 목록 팝업 렌더링 */}
+                {likeListPopup.open && likeListPopup.anchor === post.id && (
+                  <LikeListPopup
+                    users={likeListPopup.users}
+                    onClose={() => setLikeListPopup({ open: false, users: [], anchor: null })}
+                    anchorRef={{ current: likeButtonRefs.current[post.id] }}
+                  />
+                )}
               </div>
 
               {editingPostId === post.id ? (
