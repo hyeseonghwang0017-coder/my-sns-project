@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "208111882619",
+    "project_id": "ggame-a9c4c",
+    "storage_bucket": "ggame-a9c4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:208111882619:android:90d42d184279dd51bc2dde",
+        "android_client_info": {
+          "package_name": "com.ggame.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqXMAZeCGOIzYxO0x6EPLAEvoqkTDNI-8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
