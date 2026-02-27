@@ -190,3 +190,17 @@ async def get_all_users(request: Request, limit: int = 50):
         )
         for user in users
     ]
+@router.post("/device-token")
+async def save_device_token(
+    token_data: dict,
+    request: Request,
+    user_id: str = Depends(get_current_user)
+):
+    db = get_db(request)
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"device_token": token_data.get("device_token")}}
+    )
+    
+    return {"message": "Device token saved"}

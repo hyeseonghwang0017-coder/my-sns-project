@@ -23,7 +23,6 @@ import EmojiPicker from 'emoji-picker-react';
 import linkifyHtml from 'linkify-html';
 import { formatToKSTShort } from '../utils/dateFormatter';
 import LikeListPopup from '../components/LikeListPopup';
-// ...existing code...
 
 const renderContentWithLinks = (text) => {
   if (!text) return null;
@@ -103,131 +102,132 @@ function CommentItem({
   return (
     <div
       style={{
-        marginTop: '10px',
-        marginLeft: isReply ? 24 : 0,
+        marginLeft: isReply ? '30px' : '0',
+        marginTop: '12px',
         padding: '12px',
-        borderRadius: '10px',
-        backgroundColor: isReply ? '#f7f9fc' : '#ffffff',
-        border: '1px solid #e6e8eb',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        backgroundColor: isReply ? '#f9fafb' : '#fff',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
       }}
     >
-      {isDeleted ? (
-        <>
-          <p style={{ margin: '10px 0', color: '#9aa0a6', fontStyle: 'italic' }}>삭제된 댓글입니다.</p>
-          {comment.replies?.length > 0 && (
-            <div style={{ marginTop: '10px' }}>
-              {comment.replies.map((reply) => (
-                <CommentItem
-                  key={reply.id}
-                  postId={postId}
-                  comment={reply}
-                  depth={depth + 1}
-                  currentUserId={currentUserId}
-                  replyingTo={replyingTo}
-                  setReplyingTo={setReplyingTo}
-                  replyInputs={replyInputs}
-                  setReplyInputs={setReplyInputs}
-                  replyImageInputs={replyImageInputs}
-                  setReplyImageInputs={setReplyImageInputs}
-                  replyImagePreviews={replyImagePreviews}
-                  setReplyImagePreviews={setReplyImagePreviews}
-                  onReplySubmit={onReplySubmit}
-                  onCommentUpdate={onCommentUpdate}
-                  onCommentDelete={onCommentDelete}
-                />
-              ))}
-            </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AvatarBubble
+              profileImage={comment.author_profile_image}
+              displayName={comment.author_display_name || comment.author_username}
+              userId={comment.author_id}
+              size="36px"
+            />
+            <strong style={{ color: comment.author_display_name_color || '#000000' }}>
+              {comment.author_display_name || comment.author_username}
+            </strong>
+          </div>
+          <span style={{ marginLeft: '36px', color: '#9aa0a6', fontSize: '12px' }}>
+            {formatToKSTShort(comment.created_at)}
+          </span>
+          {comment.updated_at && (
+            <span style={{ marginLeft: '8px', color: '#9aa0a6', fontSize: '12px' }}>
+              (수정됨)
+            </span>
           )}
-        </>
-      ) : (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AvatarBubble
-                  profileImage={comment.author_profile_image}
-                  displayName={comment.author_display_name || comment.author_username}
-                  userId={comment.author_id}
-                  size="36px"
-                />
-                <strong style={{ color: comment.author_display_name_color || '#000000' }}>{comment.author_display_name || comment.author_username}</strong>
-              </div>
-              <span style={{ marginLeft: '36px', color: '#9aa0a6', fontSize: '12px' }}>
-                {formatToKSTShort(comment.created_at)}
-              </span>
-              {comment.updated_at && (
-                <span style={{ marginLeft: '8px', color: '#9aa0a6', fontSize: '12px' }}>
-                  (수정됨)
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setReplyingTo(comment.id)} style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none' }}>
-                답글
-              </button>
-              {isOwner && (
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setReplyingTo(comment.id)}
+            style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none' }}
+          >
+            답글
+          </button>
+          {isOwner && (
+            <>
+              {isEditing ? (
                 <>
-                  {isEditing ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          onCommentUpdate(postId, comment.id, editValue);
-                          setIsEditing(false);
-                        }}
-                        style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none' }}
-                      >
-                        저장
-                      </button>
-                      <button onClick={() => setIsEditing(false)} style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none' }}>
-                        취소
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => setIsEditing(true)} style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none' }}>
-                        수정
-                      </button>
-                      <button onClick={() => onCommentDelete(postId, comment.id)} style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none' }}>
-                        삭제
-                      </button>
-                    </>
-                  )}
+                  <button
+                    onClick={() => {
+                      onCommentUpdate(postId, comment.id, editValue);
+                      setIsEditing(false);
+                    }}
+                    style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none' }}
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none' }}
+                  >
+                    취소
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none' }}
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => onCommentDelete(postId, comment.id)}
+                    style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none' }}
+                  >
+                    삭제
+                  </button>
                 </>
               )}
-            </div>
-          </div>
-
-          {isEditing ? (
-            <textarea
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              style={{ width: '100%', minHeight: '60px', padding: '8px', marginTop: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-            />
-          ) : (
-            <p style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', color: '#111827' }}>
-              {renderContentWithLinks(comment.content)}
-            </p>
+            </>
           )}
+        </div>
+      </div>
 
-          {comment.image_url && (
-            <img
-              src={comment.image_url}
-              alt="댓글 이미지"
-              style={{ marginTop: '10px', maxWidth: '100%', borderRadius: '8px', border: '1px solid #eee' }}
-            />
-          )}
+      {isEditing ? (
+        <textarea
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          style={{
+            width: '100%',
+            minHeight: '60px',
+            padding: '8px',
+            marginTop: '10px',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+          }}
+        />
+      ) : (
+        <p style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', color: '#111827' }}>
+          {renderContentWithLinks(comment.content)}
+        </p>
+      )}
 
-          {replyingTo === comment.id && (
-            <div style={{ marginTop: '8px' }}>
-              <textarea
-                value={replyInputs[comment.id] || ''}
-                onChange={(e) =>
-                  setReplyInputs((prev) => ({ ...prev, [comment.id]: e.target.value }))
-                }
-                placeholder="답글을 입력하세요"
-                style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-              />
+      {comment.image_url && (
+        <img
+          src={comment.image_url}
+          alt="댓글 이미지"
+          style={{
+            marginTop: '10px',
+            maxWidth: '100%',
+            borderRadius: '8px',
+            border: '1px solid #eee',
+          }}
+        />
+      )}
+
+      {replyingTo === comment.id && (
+        <div style={{ marginTop: '8px' }}>
+          <textarea
+            value={replyInputs[comment.id] || ''}
+            onChange={(e) =>
+              setReplyInputs((prev) => ({ ...prev, [comment.id]: e.target.value }))
+            }
+            placeholder="답글을 입력하세요"
+            style={{
+              width: '100%',
+              minHeight: '60px',
+              padding: '8px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+            }}
+          />
           <input
             type="file"
             accept="image/*"
@@ -235,7 +235,10 @@ function CommentItem({
               const file = e.target.files?.[0] || null;
               setReplyImageInputs((prev) => ({ ...prev, [comment.id]: file }));
               if (file) {
-                setReplyImagePreviews((prev) => ({ ...prev, [comment.id]: URL.createObjectURL(file) }));
+                setReplyImagePreviews((prev) => ({
+                  ...prev,
+                  [comment.id]: URL.createObjectURL(file),
+                }));
               } else {
                 setReplyImagePreviews((prev) => ({ ...prev, [comment.id]: null }));
               }
@@ -247,7 +250,12 @@ function CommentItem({
               <img
                 src={replyImagePreviews[comment.id]}
                 alt="미리보기"
-                style={{ maxWidth: '150px', maxHeight: '150px', borderRadius: '8px', border: '1px solid #ddd' }}
+                style={{
+                  maxWidth: '150px',
+                  maxHeight: '150px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                }}
               />
               <button
                 onClick={() => {
@@ -268,64 +276,85 @@ function CommentItem({
                   fontSize: '12px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
                 }}
               >
                 ×
               </button>
             </div>
           )}
-              <div style={{ marginTop: '6px', display: 'flex', gap: '8px' }}>
-                <button onClick={() => onReplySubmit(postId, comment.id)} style={{ cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px' }}>
-                  등록
-                </button>
-                <button onClick={() => setReplyingTo(null)} style={{ cursor: 'pointer', backgroundColor: '#f3f4f6', border: 'none', padding: '6px 12px', borderRadius: '6px' }}>
-                  취소
-                </button>
-              </div>
-            </div>
-          )}
+          <div style={{ marginTop: '6px', display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => onReplySubmit(postId, comment.id)}
+              style={{
+                cursor: 'pointer',
+                backgroundColor: '#2563eb',
+                color: '#fff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+              }}
+            >
+              등록
+            </button>
+            <button
+              onClick={() => setReplyingTo(null)}
+              style={{
+                cursor: 'pointer',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+              }}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
-          {comment.replies?.length > 0 && (
-            <div style={{ marginTop: '10px' }}>
-              {comment.replies.map((reply) => (
-                <CommentItem
-                  key={reply.id}
-                  postId={postId}
-                  comment={reply}
-                  depth={depth + 1}
-                  currentUserId={currentUserId}
-                  replyingTo={replyingTo}
-                  setReplyingTo={setReplyingTo}
-                  replyInputs={replyInputs}
-                  setReplyInputs={setReplyInputs}
-                  replyImageInputs={replyImageInputs}
-                  setReplyImageInputs={setReplyImageInputs}
-                  replyImagePreviews={replyImagePreviews}
-                  setReplyImagePreviews={setReplyImagePreviews}
-                  onReplySubmit={onReplySubmit}
-                  onCommentUpdate={onCommentUpdate}
-                  onCommentDelete={onCommentDelete}
-                />
-              ))}
-            </div>
-          )}
-        </>
+      {comment.replies?.length > 0 && (
+        <div style={{ marginTop: '10px' }}>
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              postId={postId}
+              comment={reply}
+              depth={depth + 1}
+              currentUserId={currentUserId}
+              replyingTo={replyingTo}
+              setReplyingTo={setReplyingTo}
+              replyInputs={replyInputs}
+              setReplyInputs={setReplyInputs}
+              replyImageInputs={replyImageInputs}
+              setReplyImageInputs={setReplyImageInputs}
+              replyImagePreviews={replyImagePreviews}
+              setReplyImagePreviews={setReplyImagePreviews}
+              onReplySubmit={onReplySubmit}
+              onCommentUpdate={onCommentUpdate}
+              onCommentDelete={onCommentDelete}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
 function Home() {
-    // 좋아요 목록 팝업 상태
-    const [likeListPopup, setLikeListPopup] = useState({ open: false, users: [], anchor: null });
-    const likeButtonRefs = useRef({});
+  // 좋아요 목록 팝업 상태
+  const [likeListPopup, setLikeListPopup] = useState({ open: false, users: [], anchor: null });
+  const likeButtonRefs = useRef({});
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [postContent, setPostContent] = useState('');
+  // 투표 관련 상태
+  const [showPoll, setShowPoll] = useState(false);
+  const [pollOptions, setPollOptions] = useState(['', '']); // 최소 2개
+  const [pollDuration, setPollDuration] = useState('10'); // 기본 10분
   const [postImageFile, setPostImageFile] = useState(null);
   const [editingPostId, setEditingPostId] = useState(null);
   const [editingContent, setEditingContent] = useState('');
@@ -354,7 +383,21 @@ function Home() {
   const location = useLocation();
   
   const categories = ['전체', '공지', '일상', '영화', '게임'];
-
+  const saveDeviceToken = async (token) => {
+    try {
+      await fetch('http://127.0.0.1:8000/api/users/device-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ device_token: token })
+      });
+      console.log('디바이스 토큰 저장 완료');
+    } catch (err) {
+      console.error('토큰 저장 실패:', err);
+    }
+  };  
   const insertEmojiAtCursor = (editorRef, value, setValue, emoji) => {
     const quill = editorRef.current?.getEditor?.();
     if (quill) {
@@ -379,6 +422,12 @@ function Home() {
       try {
         const profile = await getMyProfile();
         setUser(profile);
+                // Swing2App 디바이스 토큰 저장
+        if (window.swing2app) {
+          window.swing2app.getDeviceToken((token) => {
+            saveDeviceToken(token);
+          });
+        }
         const category = selectedCategory === '전체' ? null : selectedCategory;
         const list = await getPosts(1, 1000, category);
         setPosts(list);
@@ -501,7 +550,7 @@ function Home() {
     tempDiv.innerHTML = postContent;
     const textContent = tempDiv.textContent || tempDiv.innerText || '';
     const trimmed = textContent.trim();
-    
+
     if (!trimmed && !postImageFile) {
       setError('내용 또는 이미지를 입력해주세요.');
       return;
@@ -514,16 +563,25 @@ function Home() {
         imageUrl = uploaded.url;
       }
 
+      // 투표 옵션이 모두 비어있으면 투표 데이터 전송하지 않음
+      const filteredPollOptions = showPoll ? pollOptions.map(opt => opt.trim()).filter(opt => opt) : [];
+
       const created = await createPost({
         content: postContent || undefined,
         image_url: imageUrl || undefined,
         category: selectedCategory === '전체' ? '일상' : selectedCategory,
+        poll_options: filteredPollOptions.length > 1 ? filteredPollOptions : undefined,
+        poll_duration: filteredPollOptions.length > 1 ? pollDuration : undefined,
       });
       setPosts([created, ...posts]);
       setPostContent('');
       setPostImageFile(null);
       setPostImagePreview(null);
       setShowEmojiPicker(false);
+      // 투표 UI 상태 초기화
+      setShowPoll(false);
+      setPollOptions(['', '']);
+      setPollDuration('10');
     } catch (err) {
       setError(err.response?.data?.detail || '게시글 작성에 실패했습니다.');
     }
@@ -726,30 +784,30 @@ function Home() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '20px auto', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '10px' }}>
-          <h1>GGame 홈</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <NotificationBell />
-            <button
-              onClick={handleLogout}
-              style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
-            >
-              👋 로그아웃
-            </button>
-          </div>
-        </div>
-
-        {error && <div style={{ color: '#ef4444', marginBottom: '15px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>{error}</div>}
-        
-        <div style={{ backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ marginTop: 0 }}>👤 내 프로필</h2>
-          <p><strong>사용자명:</strong> {user.username}</p>
-          <p><strong>표시 이름:</strong> {user.display_name}</p>
-          <p><strong>이메일:</strong> {user.email}</p>
-          {user.bio && <p><strong>소개:</strong> {user.bio}</p>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '10px' }}>
+        <h1>GGame 홈</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <NotificationBell />
           <button
+            onClick={handleLogout}
+            style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+          >
+            👋 로그아웃
+          </button>
+        </div>
+      </div>
+
+      {error && <div style={{ color: '#ef4444', marginBottom: '15px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>{error}</div>}
+      
+      <div style={{ backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e5e7eb' }}>
+        <h2 style={{ marginTop: 0 }}>👤 내 프로필</h2>
+        <p><strong>사용자명:</strong> {user.username}</p>
+        <p><strong>표시 이름:</strong> {user.display_name}</p>
+        <p><strong>이메일:</strong> {user.email}</p>
+        {user.bio && <p><strong>소개:</strong> {user.bio}</p>}
+        <button
           onClick={() => navigate(`/profile/${user.id}`)}
           style={{ marginTop: '15px', padding: '10px 20px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s' }}
           onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
@@ -969,6 +1027,83 @@ function Home() {
               </div>
             )}
           </div>
+          {/* 투표 UI - 임시 비활성화 */}
+          {/* <div style={{ marginBottom: '12px' }}>
+            {!showPoll ? (
+              <button
+                type="button"
+                onClick={() => setShowPoll(true)}
+                style={{ padding: '6px 12px', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
+              >
+                📊 투표 추가
+              </button>
+            ) : (
+              <div style={{ background: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '8px', padding: '16px', marginTop: '8px' }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontWeight: '600', fontSize: '14px', marginRight: '10px' }}>투표 종료 시간:</label>
+                  <select
+                    value={pollDuration}
+                    onChange={e => setPollDuration(e.target.value)}
+                    style={{ padding: '6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+                  >
+                    <option value="10">10분</option>
+                    <option value="30">30분</option>
+                    <option value="60">1시간</option>
+                    <option value="360">6시간</option>
+                    <option value="720">12시간</option>
+                    <option value="1440">1일</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontWeight: '600', fontSize: '14px', marginBottom: '8px', display: 'block' }}>투표 선택지</label>
+                  {pollOptions.map((opt, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={e => {
+                          const newOpts = [...pollOptions];
+                          newOpts[idx] = e.target.value;
+                          setPollOptions(newOpts);
+                        }}
+                        placeholder={`선택지 ${idx + 1}`}
+                        style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))}
+                          style={{ marginLeft: '8px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions([...pollOptions, ''])}
+                      style={{ marginTop: '6px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      + 선택지 추가
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPoll(false);
+                    setPollOptions(['', '']);
+                    setPollDuration('10');
+                  }}
+                  style={{ marginTop: '12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  투표 취소
+                </button>
+              </div>
+            )}
+          </div> */}
           <input
             type="file"
             accept="image/*"
@@ -1056,7 +1191,7 @@ function Home() {
                 marginBottom: '15px',
                 backgroundColor: isHighlighted ? '#eff6ff' : 'white',
                 transition: 'all 0.3s ease',
-                position: 'relative', // 팝업 위치 기준
+                position: 'relative',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -1250,16 +1385,33 @@ function Home() {
                   </div>
                 </>
               ) : (
-                <div
-                  className="post-content"
-                  style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '14px' }}
-                  dangerouslySetInnerHTML={{
-                    __html: linkifyHtml(post.content || '', {
-                      target: '_blank',
-                      rel: 'noopener noreferrer',
-                    })
-                  }}
-                />
+                <>
+                  <div
+                    className="post-content"
+                    style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '14px' }}
+                    dangerouslySetInnerHTML={{
+                      __html: linkifyHtml(post.content || '', {
+                        target: '_blank',
+                        rel: 'noopener noreferrer',
+                      })
+                    }}
+                  />
+                  {/* 투표 UI 표시 */}
+                  {/*post.poll_options && post.poll_options.length > 1 && (
+                    <div style={{ margin: '16px 0', padding: '12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                      <strong>투표:</strong>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {post.poll_options.map((option, idx) => (
+                          <li key={idx} style={{ margin: '8px 0' }}>
+                            <button style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
+                              {option}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )} */}
+                </>
               )}
 
               {post.image_url && (

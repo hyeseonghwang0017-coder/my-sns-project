@@ -19,21 +19,20 @@ from routes.notifications import router as notifications_router
 
 app = FastAPI(title="SNS API")
 
-# CORS 설정
+# CORS 설정 (프론트엔드 포트 모두 포함)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_origins=[
+        "*",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
-        "https://my-sns-project.vercel.app",
+        "http://127.0.0.1:3001",
+        "https://my-sns-project.vercel.app"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Content-Type", "Authorization", "Accept"],
-    expose_headers=["Content-Type", "Authorization"],
-    max_age=3600,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 @app.on_event("startup")
