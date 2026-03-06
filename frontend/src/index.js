@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import * as serviceWorker from './serviceWorker';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -17,5 +16,14 @@ root.render(
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
 
-// PWA: 서비스워커 등록
-serviceWorker.register();
+// PWA: Firebase Messaging Service Worker 등록
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register('/firebase-messaging-sw.js')
+    .then((registration) => {
+      console.log('Firebase Messaging Service Worker registered:', registration);
+    })
+    .catch((error) => {
+      console.log('Error during service worker registration:', error);
+    });
+}
