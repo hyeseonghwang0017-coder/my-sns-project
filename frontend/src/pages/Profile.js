@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import './Profile.mobile.css';
 import linkifyHtml from 'linkify-html';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -19,6 +20,7 @@ import AvatarBubble from '../components/AvatarBubble';
 import { formatToKSTShort } from '../utils/dateFormatter';
 
 function Profile() {
+  const [activeTab, setActiveTab] = useState('posts');
   const { userId } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
@@ -233,7 +235,7 @@ function Profile() {
   const isOwnProfile = currentUser.id === userId;
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '20px' }}>
+    <div className="profile-container" style={{ maxWidth: '1000px', margin: '20px auto', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1>👤 프로필</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -251,7 +253,7 @@ function Profile() {
       {/* 프로필 섹션 */}
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e5e7eb', overflow: 'hidden', position: 'relative' }}>
         {/* 헤더 이미지 섹션 */}
-        <div style={{ position: 'relative', width: '100%', height: '200px', backgroundColor: profile.header_image ? 'transparent' : '#94a3b8' }}>
+        <div className="profile-header" style={{ position: 'relative', width: '100%', height: '200px', backgroundColor: profile.header_image ? 'transparent' : '#94a3b8' }}>
           {profile.header_image ? (
             <img
               src={profile.header_image}
@@ -337,12 +339,13 @@ function Profile() {
 
         {/* 프로필 정보 섹션 */}
         <div style={{ padding: '30px', position: 'relative', marginTop: '-50px' }}>
-          <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+          <div className="profile-main-row" style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
             <div style={{ position: 'relative' }}>
               {profile.profile_image ? (
                 <img
                   src={profile.profile_image}
                   alt="프로필"
+                  className="profile-image"
                   style={{ width: '150px', height: '150px', borderRadius: '50%', objectFit: 'cover', border: '5px solid #fff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}
                 />
               ) : (
@@ -400,7 +403,7 @@ function Profile() {
                 </div>
               )}
             </div>
-            <div style={{ flex: 1, marginTop: '50px' }}>
+            <div className="profile-info" style={{ flex: 1, marginTop: '50px' }}>
               {isOwnProfile && isEditingProfile ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div>
@@ -454,6 +457,7 @@ function Profile() {
                     {isOwnProfile && (
                       <button
                         onClick={() => setIsEditingProfile(true)}
+                        className="profile-edit-btn"
                         style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px', fontWeight: '600', fontSize: '12px' }}
                       >
                         ✏️ 프로필 편집
@@ -475,6 +479,7 @@ function Profile() {
                       <button
                         key={color}
                         onClick={() => handleDisplayNameColorChange(color)}
+                        className="profile-color-btn"
                         style={{
                           width: '40px',
                           height: '40px',
@@ -495,307 +500,305 @@ function Profile() {
         </div>
       </div>
 
-      {/* 탭 섹션 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-        {/* 게시글 목록 */}
-        <div>
-          <h2>📝 게시글 ({posts.length})</h2>
-          {posts.length === 0 && <p style={{ color: '#888' }}>📭 작성한 게시글이 없습니다.</p>}
-          {displayedPosts.map((post) => (
-            <div
-              key={post.id}
-              onClick={() => navigate('/', { state: { highlightPostId: post.id } })}
-              style={{
-                border: '1px solid #ddd',
-                padding: '15px',
-                borderRadius: '8px',
-                marginTop: '15px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.borderColor = '#2563eb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#ddd';
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <AvatarBubble
-                  profileImage={post.author_profile_image}
-                  displayName={post.author_display_name || post.author_username}
-                  userId={post.author_id}
-                  size="40px"
-                />
-                <div>
-                  <strong>{post.author_display_name || post.author_username}</strong>
-                  <div style={{ color: '#888', fontSize: '12px' }}>
-                    {formatToKSTShort(post.created_at)}
+      {/* 모바일 탭 UI */}
+      <div className="profile-tabs">
+        <button className={`profile-tab-btn${activeTab === 'posts' ? ' active' : ''}`} onClick={() => setActiveTab('posts')}>📝 게시글</button>
+        <button className={`profile-tab-btn${activeTab === 'guestbook' ? ' active' : ''}`} onClick={() => setActiveTab('guestbook')}>📖 방명록</button>
+      </div>
+      <div className="profile-section">
+        {activeTab === 'posts' ? (
+          <>
+            <h2>📝 게시글 ({posts.length})</h2>
+            {posts.length === 0 && <p style={{ color: '#888' }}>📭 작성한 게시글이 없습니다.</p>}
+            {displayedPosts.map((post) => (
+              <div
+                key={post.id}
+                onClick={() => navigate('/', { state: { highlightPostId: post.id } })}
+                style={{
+                  border: '1px solid #ddd',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  marginTop: '15px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                  e.currentTarget.style.borderColor = '#2563eb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#ddd';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <AvatarBubble
+                    profileImage={post.author_profile_image}
+                    displayName={post.author_display_name || post.author_username}
+                    userId={post.author_id}
+                    size="40px"
+                  />
+                  <div>
+                    <strong>{post.author_display_name || post.author_username}</strong>
+                    <div style={{ color: '#888', fontSize: '12px' }}>
+                      {formatToKSTShort(post.created_at)}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div
-                className="post-content"
-                style={{ whiteSpace: 'pre-wrap' }}
-                dangerouslySetInnerHTML={{
-                  __html: linkifyHtml(post.content || '', {
-                    target: '_blank',
-                    rel: 'noopener noreferrer',
-                  })
-                }}
-              />
-              {post.image_url && (
-                <img
-                  src={post.image_url}
-                  alt="게시글"
-                  style={{ marginTop: '10px', maxWidth: '100%', borderRadius: '8px' }}
+                <div
+                  className="post-content"
+                  style={{ whiteSpace: 'pre-wrap' }}
+                  dangerouslySetInnerHTML={{
+                    __html: linkifyHtml(post.content || '', {
+                      target: '_blank',
+                      rel: 'noopener noreferrer',
+                    })
+                  }}
                 />
-              )}
-              <div style={{ marginTop: '10px', color: '#888', fontSize: '12px' }}>
-                좋아요 {post.likes_count}
+                {post.image_url && (
+                  <img
+                    src={post.image_url}
+                    alt="게시글"
+                    style={{ marginTop: '10px', maxWidth: '100%', borderRadius: '8px' }}
+                  />
+                )}
+                <div style={{ marginTop: '10px', color: '#888', fontSize: '12px' }}>
+                  좋아요 {post.likes_count}
+                </div>
               </div>
-            </div>
-          ))}
-
-          {/* 페이지네이션 */}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px', gap: '8px', flexWrap: 'wrap' }}>
-              {currentPage > 1 && (
-                <button
-                  onClick={() => setCurrentPage((prev) => prev - 1)}
-                  style={{
-                    padding: '10px 12px',
-                    cursor: 'pointer',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    backgroundColor: '#fff',
-                    fontWeight: '600',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                    e.target.style.borderColor = '#2563eb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#fff';
-                    e.target.style.borderColor = '#e5e7eb';
-                  }}
-                >
-                  ◀ 이전
-                </button>
-              )}
-
-              {Array.from({ length: totalPages }).map((_, i) => {
-                const pageNum = i + 1;
-                const maxVisible = 5;
-                const isVisible =
-                  pageNum === 1 ||
-                  pageNum === totalPages ||
-                  (pageNum >= currentPage - Math.floor(maxVisible / 2) &&
-                    pageNum <= currentPage + Math.floor(maxVisible / 2));
-
-                if (!isVisible) {
-                  if (pageNum === currentPage - Math.floor(maxVisible / 2) - 1) {
-                    return <span key="ellipsis-start">...</span>;
-                  }
-                  if (pageNum === currentPage + Math.floor(maxVisible / 2) + 1) {
-                    return <span key="ellipsis-end">...</span>;
-                  }
-                  return null;
-                }
-
-                return (
+            ))}
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px', gap: '8px', flexWrap: 'wrap' }}>
+                {currentPage > 1 && (
                   <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
+                    onClick={() => setCurrentPage((prev) => prev - 1)}
                     style={{
                       padding: '10px 12px',
                       cursor: 'pointer',
-                      border: currentPage === pageNum ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                      border: '1px solid #e5e7eb',
                       borderRadius: '6px',
-                      backgroundColor: currentPage === pageNum ? '#dbeafe' : '#fff',
-                      fontWeight: currentPage === pageNum ? '700' : '600',
-                      color: currentPage === pageNum ? '#2563eb' : '#6b7280',
+                      backgroundColor: '#fff',
+                      fontWeight: '600',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (currentPage !== pageNum) {
-                        e.target.style.backgroundColor = '#f3f4f6';
-                      }
+                      e.target.style.backgroundColor = '#f3f4f6';
+                      e.target.style.borderColor = '#2563eb';
                     }}
                     onMouseLeave={(e) => {
-                      if (currentPage !== pageNum) {
-                        e.target.style.backgroundColor = '#fff';
-                      }
+                      e.target.style.backgroundColor = '#fff';
+                      e.target.style.borderColor = '#e5e7eb';
                     }}
                   >
-                    {pageNum}
+                    ◀ 이전
                   </button>
-                );
-              })}
-
-              {currentPage < totalPages && (
-                <button
-                  onClick={() => setCurrentPage((prev) => prev + 1)}
-                  style={{
-                    padding: '10px 12px',
-                    cursor: 'pointer',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    backgroundColor: '#fff',
-                    fontWeight: '600',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                    e.target.style.borderColor = '#2563eb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#fff';
-                    e.target.style.borderColor = '#e5e7eb';
-                  }}
-                >
-                  다음 ▶
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 방명록 */}
-        <div>
-          <h2>📖 방명록 ({guestbook.length})</h2>
-          <form onSubmit={handleGuestbookSubmit} style={{ marginTop: '15px' }}>
-            <textarea
-              value={guestbookInput}
-              onChange={(e) => setGuestbookInput(e.target.value)}
-              placeholder="방명록을 남겨주세요"
-              style={{ width: '100%', minHeight: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-            />
-            <button
-              type="submit"
-              style={{ marginTop: '10px', padding: '10px 16px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
-            >
-              📝 방명록 작성
-            </button>
-          </form>
-
-          {guestbook.length === 0 && <p style={{ color: '#888', marginTop: '15px' }}>📭 아직 방명록이 없습니다.</p>}
-          {guestbook.map((entry) => (
-            <div key={entry.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginTop: '15px', backgroundColor: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {entry.author_profile_image ? (
-                    <img
-                      src={entry.author_profile_image}
-                      alt="프로필"
-                      style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
+                )}
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const pageNum = i + 1;
+                  const maxVisible = 5;
+                  const isVisible =
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    (pageNum >= currentPage - Math.floor(maxVisible / 2) &&
+                      pageNum <= currentPage + Math.floor(maxVisible / 2));
+                  if (!isVisible) {
+                    if (pageNum === currentPage - Math.floor(maxVisible / 2) - 1) {
+                      return <span key="ellipsis-start">...</span>;
+                    }
+                    if (pageNum === currentPage + Math.floor(maxVisible / 2) + 1) {
+                      return <span key="ellipsis-end">...</span>;
+                    }
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
                       style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        backgroundColor: '#e9eef5',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                        color: '#4b5563',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        border: currentPage === pageNum ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        backgroundColor: currentPage === pageNum ? '#dbeafe' : '#fff',
+                        fontWeight: currentPage === pageNum ? '700' : '600',
+                        color: currentPage === pageNum ? '#2563eb' : '#6b7280',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentPage !== pageNum) {
+                          e.target.style.backgroundColor = '#f3f4f6';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentPage !== pageNum) {
+                          e.target.style.backgroundColor = '#fff';
+                        }
                       }}
                     >
-                      {entry.author_display_name.slice(0, 1)}
-                    </div>
-                  )}
-                  <div>
-                    {entry.author_id === currentUser.id ? (
-                      <strong
-                        style={{ cursor: 'pointer', color: entry.author_display_name_color || '#000000', transition: 'all 0.2s' }}
-                        onClick={() => navigate(`/profile/${entry.author_id}`)}
-                        onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
-                        onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
-                      >
-                        {entry.author_display_name}
-                      </strong>
-                    ) : (
-                      <strong
-                        style={{ cursor: 'pointer', color: entry.author_display_name_color || '#2563eb', transition: 'all 0.2s' }}
-                        onClick={() => navigate(`/profile/${entry.author_id}`)}
-                        onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
-                        onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
-                      >
-                        {entry.author_display_name}
-                      </strong>
-                    )}
-                    <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
-                      {new Date(entry.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
-                    </span>
-                  </div>
-                </div>
-                {entry.author_id === currentUser.id && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {editingEntryId === entry.id ? (
-                      <>
-                        <button
-                          onClick={() => handleGuestbookUpdate(entry.id)}
-                          style={{ cursor: 'pointer', color: '#10b981', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-                          onMouseLeave={(e) => e.target.style.opacity = '1'}
-                        >
-                          ✅ 저장
-                        </button>
-                        <button
-                          onClick={() => setEditingEntryId(null)}
-                          style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-                          onMouseLeave={(e) => e.target.style.opacity = '1'}
-                        >
-                          ❌ 취소
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setEditingEntryId(entry.id);
-                            setEditingContent(entry.content);
-                          }}
-                          style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-                          onMouseLeave={(e) => e.target.style.opacity = '1'}
-                        >
-                          ✏️ 수정
-                        </button>
-                        <button
-                          onClick={() => handleGuestbookDelete(entry.id)}
-                          style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => e.target.style.opacity = '0.7'}
-                          onMouseLeave={(e) => e.target.style.opacity = '1'}
-                        >
-                          🗑️ 삭제
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                {currentPage < totalPages && (
+                  <button
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                    style={{
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      backgroundColor: '#fff',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f3f4f6';
+                      e.target.style.borderColor = '#2563eb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#fff';
+                      e.target.style.borderColor = '#e5e7eb';
+                    }}
+                  >
+                    다음 ▶
+                  </button>
                 )}
               </div>
-              {editingEntryId === entry.id ? (
-                <textarea
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  style={{ width: '100%', minHeight: '60px', padding: '8px', marginTop: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                />
-              ) : (
-                <p style={{ marginTop: '10px', whiteSpace: 'pre-wrap' }}>{entry.content}</p>
-              )}
-            </div>
-          ))}
-        </div>
+            )}
+          </>
+        ) : (
+          <>
+            <h2>📖 방명록 ({guestbook.length})</h2>
+            <form onSubmit={handleGuestbookSubmit} style={{ marginTop: '15px' }}>
+              <textarea
+                value={guestbookInput}
+                onChange={(e) => setGuestbookInput(e.target.value)}
+                placeholder="방명록을 남겨주세요"
+                style={{ width: '100%', minHeight: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+              />
+              <button
+                type="submit"
+                style={{ marginTop: '10px', padding: '10px 16px', cursor: 'pointer', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
+              >
+                📝 방명록 작성
+              </button>
+            </form>
+            {guestbook.length === 0 && <p style={{ color: '#888', marginTop: '15px' }}>📭 아직 방명록이 없습니다.</p>}
+            {guestbook.map((entry) => (
+              <div key={entry.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginTop: '15px', backgroundColor: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {entry.author_profile_image ? (
+                      <img
+                        src={entry.author_profile_image}
+                        alt="프로필"
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: '#e9eef5',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          color: '#4b5563',
+                        }}
+                      >
+                        {entry.author_display_name.slice(0, 1)}
+                      </div>
+                    )}
+                    <div>
+                      {entry.author_id === currentUser.id ? (
+                        <strong
+                          style={{ cursor: 'pointer', color: entry.author_display_name_color || '#000000', transition: 'all 0.2s' }}
+                          onClick={() => navigate(`/profile/${entry.author_id}`)}
+                          onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                          onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
+                        >
+                          {entry.author_display_name}
+                        </strong>
+                      ) : (
+                        <strong
+                          style={{ cursor: 'pointer', color: entry.author_display_name_color || '#2563eb', transition: 'all 0.2s' }}
+                          onClick={() => navigate(`/profile/${entry.author_id}`)}
+                          onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
+                          onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
+                        >
+                          {entry.author_display_name}
+                        </strong>
+                      )}
+                      <span style={{ marginLeft: '8px', color: '#888', fontSize: '12px' }}>
+                        {new Date(entry.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                      </span>
+                    </div>
+                  </div>
+                  {entry.author_id === currentUser.id && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {editingEntryId === entry.id ? (
+                        <>
+                          <button
+                            onClick={() => handleGuestbookUpdate(entry.id)}
+                            style={{ cursor: 'pointer', color: '#10b981', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                            onMouseLeave={(e) => e.target.style.opacity = '1'}
+                          >
+                            ✅ 저장
+                          </button>
+                          <button
+                            onClick={() => setEditingEntryId(null)}
+                            style={{ cursor: 'pointer', color: '#6b7280', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                            onMouseLeave={(e) => e.target.style.opacity = '1'}
+                          >
+                            ❌ 취소
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingEntryId(entry.id);
+                              setEditingContent(entry.content);
+                            }}
+                            style={{ cursor: 'pointer', color: '#2563eb', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                            onMouseLeave={(e) => e.target.style.opacity = '1'}
+                          >
+                            ✏️ 수정
+                          </button>
+                          <button
+                            onClick={() => handleGuestbookDelete(entry.id)}
+                            style={{ cursor: 'pointer', color: '#ef4444', background: 'none', border: 'none', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => e.target.style.opacity = '0.7'}
+                            onMouseLeave={(e) => e.target.style.opacity = '1'}
+                          >
+                            🗑️ 삭제
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {editingEntryId === entry.id ? (
+                  <textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    style={{ width: '100%', minHeight: '60px', padding: '8px', marginTop: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  />
+                ) : (
+                  <p style={{ marginTop: '10px', whiteSpace: 'pre-wrap' }}>{entry.content}</p>
+                )}
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
