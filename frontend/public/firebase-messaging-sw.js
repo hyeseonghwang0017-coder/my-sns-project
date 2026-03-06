@@ -11,13 +11,13 @@ console.log('[Service Worker] Firebase 스크립트 임포트 완료');
 
 try {
   firebase.initializeApp({
-    apiKey: "AIzaSyDIaYW8cllMNuwNGFoT4GXxgZz0a3-iNZc",
-    authDomain: "ggame-a9c4c.firebaseapp.com",
-    projectId: "ggame-a9c4c",
-    storageBucket: "ggame-a9c4c.firebasestorage.app",
-    messagingSenderId: "208111882619",
-    appId: "1:208111882619:web:89dd77ff9eb36858bc2dde",
-    measurementId: "G-TZPYZSLGDG"
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: "",
+    measurementId: ""
   });
   console.log('[Service Worker] Firebase 초기화 완료');
 } catch (error) {

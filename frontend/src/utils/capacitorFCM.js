@@ -1,4 +1,4 @@
-import { FCM } from '@capacitor-firebase/messaging';
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import debugLogger from '../utils/debugLogger';
 
@@ -18,27 +18,27 @@ export const initializeCapacitorFCM = async () => {
 
     // Android에서 알림 권한 요청 (API 33+)
     try {
-      const permResult = await FCM.requestPermissions();
+      const permResult = await FirebaseMessaging.requestPermissions();
       debugLogger.log('FCM', '✅ 알림 권한 요청 완료', { granted: permResult.receive });
     } catch (permErr) {
       debugLogger.error('FCM', '알림 권한 요청 실패', { error: permErr.message });
     }
 
     // FCM 토큰 요청
-    const result = await FCM.getToken();
+    const result = await FirebaseMessaging.getToken();
     const deviceToken = result.token;
     
     debugLogger.log('FCM', '✅ FCM 토큰 획득 성공', { token: deviceToken?.substring(0, 20) + '...' });
     
     // FCM 토큰이 변경되었을 때
-    FCM.addListener('tokenReceived', (event) => {
+    FirebaseMessaging.addListener('tokenReceived', (event) => {
       debugLogger.log('FCM', '🔄 FCM 토큰 갱신됨', { newToken: event.token?.substring(0, 20) + '...' });
       // 토큰이 변경되면 서버에 업데이트
       saveFCMTokenToServer(event.token);
     });
 
     // 포그라운드 메시지 수신
-    FCM.addListener('messageReceived', (event) => {
+    FirebaseMessaging.addListener('messageReceived', (event) => {
       debugLogger.log('FCM', '📨 포그라운드 메시지 수신', {
         title: event.notification?.title,
         body: event.notification?.body
