@@ -1,11 +1,32 @@
 import firebase_admin
 from firebase_admin import credentials, messaging
 import os
+import json
+import tempfile
 
 # Firebase 초기화 (한 번만 실행)
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase-credentials.json")
-    firebase_admin.initialize_app(cred)
+    firebase_cred_json = os.getenv("FIREBASE_CREDENTIALS")
+    
+    if firebase_cred_json:
+        # 환경변수에서 읽은 JSON 문자열을 임시 파일에 저장
+        try:
+            cred_dict = json.loads(firebase_cred_json)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                json.dump(cred_dict, f)
+                temp_cred_path = f.name
+            cred = credentials.Certificate(temp_cred_path)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase initialized from environment variable")
+        except Exception as e:
+            print(f"❌ Firebase initialization failed: {e}")
+    elif os.path.exists("firebase-credentials.json"):
+        # 로컬 개발용: 파일에서 읽기
+        cred = credentials.Certificate("firebase-credentials.json")
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase initialized from local file")
+    else:
+        print("⚠️ Firebase credentials not found. Push notifications will be disabled.")
 
 def send_push_notification(device_tokens, title, body):
     """
@@ -19,6 +40,11 @@ def send_push_notification(device_tokens, title, body):
     Returns:
         dict: 성공/실패 카운트를 포함한 응답
     """
+    # Firebase가 초기화되지 않으면 조용히 반환
+    if not firebase_admin._apps:
+        print("⚠️ Firebase not initialized. Push notification skipped.")
+        return {"success_count": 0, "failure_count": 0, "skipped": True}
+    
     if not device_tokens:
         print("No device tokens provided")
         return None

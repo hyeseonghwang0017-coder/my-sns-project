@@ -104,7 +104,25 @@ SECRET_KEY = your_secret_key
 CLOUDINARY_CLOUD_NAME = your_cloud_name
 CLOUDINARY_API_KEY = your_api_key
 CLOUDINARY_API_SECRET = your_api_secret
+FIREBASE_CREDENTIALS = your_firebase_credentials_json
 ```
+
+#### 🔑 Firebase 환경변수 설정 (중요!)
+
+Render에서 `firebase-credentials.json` 파일을 직접 업로드할 수 없으므로 환경변수로 전달해야 합니다:
+
+1. **Firebase 자격증명 JSON 파일 준비**
+   - Firebase Console → 프로젝트 설정 → 서비스 계정
+   - "새 개인 키 생성" 클릭
+   - JSON 파일 다운로드
+
+2. **Render 환경변수 설정**
+   - Render 대시보드 → 프로젝트 → Settings → Environment
+   - `FIREBASE_CREDENTIALS` 변수 추가
+   - 다운로드한 JSON 파일의 전체 내용을 복사하여 붙여넣기
+   - Save
+
+💡 **로컬 개발**: `firebase-credentials.json` 파일이 `backend/` 디렉토리에 있으면 자동으로 사용됨
 
 ### 3.5 배포
 - "Create Web Service" 클릭
