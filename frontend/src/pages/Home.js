@@ -421,25 +421,26 @@ function Home() {
     }
 
     const fetchProfile = async () => {
-      
       try {
         const profile = await getMyProfile();
         setUser(profile);
-            try {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        const fcmToken = await getToken(messaging, {
-          vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
-        });
         
-        if (fcmToken) {
-          await saveDeviceToken(fcmToken);
-          console.log('FCM 토큰 저장 완료:', fcmToken);
+        // FCM 토큰 요청 및 저장
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const fcmToken = await getToken(messaging, {
+              vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
+            });
+            
+            if (fcmToken) {
+              await saveDeviceToken(fcmToken);
+              console.log('FCM 토큰 저장 완료:', fcmToken);
+            }
+          }
+        } catch (err) {
+          console.log('FCM 토큰 가져오기 실패:', err);
         }
-      }
-    } catch (err) {
-      console.log('FCM 토큰 가져오기 실패:', err);
-    }
 
         const category = selectedCategory === '전체' ? null : selectedCategory;
         const list = await getPosts(1, 1000, category);
@@ -462,6 +463,8 @@ function Home() {
       } catch (err) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         navigate('/login');
       }
     };
