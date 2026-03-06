@@ -1,21 +1,58 @@
-# backend/utils/push_notification.py 파일 생성
-import requests
+import firebase_admin
+from firebase_admin import credentials, messaging
+import os
 
-SWING2APP_API_URL = "https://swing2app.co.kr/swapi/push/send"
-SWING2APP_APP_ID = "YOUR_APP_ID"  # Swing2App에서 받은 앱 ID
+# Firebase 초기화 (한 번만 실행)
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase-credentials.json")
+    firebase_admin.initialize_app(cred)
 
-def send_push_notification(device_tokens, title, message):
-    data = {
-        "app_id": SWING2APP_APP_ID,
-        "send_target_list": device_tokens,
-        "send_type": "push",
-        "title": title,
-        "message": message,
-    }
+def send_push_notification(device_tokens, title, body):
+    """
+    Firebase FCM으로 푸시 알림 전송
+    
+    Args:
+        device_tokens: list of device tokens (사용자들의 디바이스 토큰)
+        title: 알림 제목
+        body: 알림 내용
+    
+    Returns:
+        dict: 성공/실패 카운트를 포함한 응답
+    """
+    if not device_tokens:
+        print("No device tokens provided")
+        return None
+    
+    # device_tokens가 문자열이면 리스트로 변환
+    if isinstance(device_tokens, str):
+        device_tokens = [device_tokens]
     
     try:
-        response = requests.post(SWING2APP_API_URL, json=data)
-        return response.json()
+        # 각 토큰에 개별적으로 메시지 전송
+        success_count = 0
+        failure_count = 0
+        
+        for token in device_tokens:
+            try:
+                message = messaging.Message(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=body,
+                    ),
+                    token=token,
+                )
+                response = messaging.send(message)
+                print(f'✅ 메시지 전송 성공 (토큰: {token[:20]}...): {response}')
+                success_count += 1
+            except Exception as token_error:
+                print(f'❌ 메시지 전송 실패 (토큰: {token[:20]}...): {token_error}')
+                failure_count += 1
+        
+        print(f'\n총 {success_count}개 성공, {failure_count}개 실패')
+        return {"success_count": success_count, "failure_count": failure_count}
     except Exception as e:
-        print(f"Push notification error: {e}")
+        import traceback
+        print(f'Error sending message: {e}')
+        print(f'오류 세부사항:')
+        traceback.print_exc()
         return None

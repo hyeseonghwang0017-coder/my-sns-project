@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, HTTPException, Depends, status, Request, Body
 from models.guestbook import GuestbookCreate, GuestbookUpdate, GuestbookResponse
 from utils.auth import get_current_user
@@ -6,6 +7,7 @@ from typing import Dict
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
+from utils.push_notification import send_push_notification
 
 router = APIRouter(prefix="/api/profiles", tags=["Profiles"])
 
@@ -212,7 +214,7 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
     result = await db.guestbook.insert_one(entry_doc)
     entry_doc["_id"] = result.inserted_id
     
-    # 알림 생성 (자신의 방명록에는 알림 안 함)
+    # 알림 및 푸시 알림 생성 (자신의 방명록에는 알림/푸시 알림 안 함)
     if recipient_id != actor_id:
         await db.notifications.insert_one({
             "recipient_id": recipient_id,
@@ -227,6 +229,14 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
             "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         })
+
+        # 푸시 알림 전송
+        if profile_user.get("device_token"):
+            send_push_notification(
+                [profile_user["device_token"]],
+                "새 방명록 글 📝",
+                f"{author['display_name']}님이 방명록에 글을 남겼습니다."
+            )
     
     return GuestbookResponse(
         id=str(entry_doc["_id"]),

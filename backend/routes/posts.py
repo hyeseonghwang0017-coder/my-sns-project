@@ -6,6 +6,7 @@ from utils.database import get_db, parse_object_id
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
+from utils.push_notification import send_push_notification
 
 router = APIRouter(prefix="/api/posts", tags=["Posts"])
 
@@ -222,7 +223,7 @@ async def like_post(post_id: str, request: Request, user_id: str = Depends(get_c
         {"$addToSet": {"liked_by": user_id}},
     )
 
-    # 처음 좋아요 한 경우만 알림 생성
+    # 처음 좋아요 한 경우만 알림 생성 및 푸시 알림 전송
     if not already_liked and post["author_id"] != user_id:
         user = await db.users.find_one({"_id": ObjectId(user_id)})
         await db.notifications.insert_one({
@@ -238,6 +239,15 @@ async def like_post(post_id: str, request: Request, user_id: str = Depends(get_c
             "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         })
+
+        # 푸시 알림 전송
+        author = await db.users.find_one({"_id": ObjectId(post["author_id"])})
+        if author and author.get("device_token"):
+            send_push_notification(
+                [author["device_token"]],
+                "새 좋아요 ❤️",
+                f"{user['display_name']}님이 좋아요를 눌렀습니다"
+            )
 
     post = await db.posts.find_one({"_id": post["_id"]})
     return await build_post_response(post, db)
@@ -331,7 +341,7 @@ async def create_comment(post_id: str, payload: CommentCreate, request: Request,
         notification_type = "comment"
         message = f"{user['display_name']}님이 게시글에 댓글을 남겼습니다."
     
-    # 자신의 게시글/댓글에는 알림 안 함
+    # 자신의 게시글/댓글에는 알림/푸시 알림 안 함
     if recipient_id != user_id:
         await db.notifications.insert_one({
             "recipient_id": recipient_id,
@@ -346,6 +356,15 @@ async def create_comment(post_id: str, payload: CommentCreate, request: Request,
             "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         })
+
+        # 푸시 알림 전송
+        recipient = await db.users.find_one({"_id": ObjectId(recipient_id)})
+        if recipient and recipient.get("device_token"):
+            send_push_notification(
+                [recipient["device_token"]],
+                "새 댓글 💬" if not parent_id else "새 답글 💬",
+                message
+            )
     
     return await build_comment_response(comment_doc, db)
 
