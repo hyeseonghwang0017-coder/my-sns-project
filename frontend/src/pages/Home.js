@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { messaging, getToken, onMessage } from '../firebase';
+import { messaging, getToken, onMessage } from 'firebase';
 import {
   getMyProfile,
   getPosts,
