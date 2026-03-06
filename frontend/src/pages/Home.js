@@ -17,6 +17,8 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import AvatarBubble from '../components/AvatarBubble';
+import { messaging, onMessage } from '../firebase';
+import debugLogger from '../utils/debugLogger';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import EmojiPicker from 'emoji-picker-react';
@@ -437,6 +439,38 @@ function Home() {
     };
 
     fetchProfile();
+
+    // 포그라운드 메시지 수신 리스너
+    try {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        debugLogger.log('Home', '📨 포그라운드 메시지 수신', {
+          title: payload.notification?.title,
+          body: payload.notification?.body
+        });
+        
+        // 현재 브라우저 창에 포커스가 있으면 알림 표시
+        if (document.visibilityState === 'visible') {
+          // 브라우저 알림 표시
+          const notificationTitle = payload.notification?.title || '새 알림';
+          const notificationOptions = {
+            body: payload.notification?.body || '',
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            tag: `notification-${Date.now()}`,
+          };
+          
+          if (Notification.permission === 'granted') {
+            new Notification(notificationTitle, notificationOptions);
+          }
+          
+          debugLogger.log('Home', '✅ 포그라운드 알림 표시:', notificationTitle);
+        }
+      });
+      
+      return () => unsubscribe();
+    } catch (err) {
+      debugLogger.error('Home', '포그라운드 메시지 리스너 등록 중 오류', { error: err.message });
+    }
   }, [navigate, selectedCategory]);
 
   // 프로필에서 게시글 클릭 시 하이라이트 처리

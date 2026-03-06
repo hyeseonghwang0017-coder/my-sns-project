@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { login } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { messaging, getToken } from '../firebase';
+import { Capacitor } from '@capacitor/core';
+import debugLogger from '../utils/debugLogger';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -12,26 +14,46 @@ function Login() {
 
   const saveFCMToken = async () => {
     try {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        const fcmToken = await getToken(messaging, {
-          vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
-        });
+      debugLogger.log('Login', 'FCM 토큰 저장 시작');
+      
+      // 웹 환경에서만 브라우저 FCM 사용
+      if (!Capacitor.isNativePlatform()) {
+        debugLogger.log('Login', '웹 환경 - Firebase FCM 토큰 요청');
         
-        if (fcmToken) {
-          await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ device_token: fcmToken })
+        const permission = await Notification.requestPermission();
+        debugLogger.log('Login', `Notification 권한: ${permission}`);
+        
+        if (permission === 'granted') {
+          const fcmToken = await getToken(messaging, {
+            vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
           });
-          console.log('✅ FCM 토큰이 저장되었습니다.');
+          
+          if (fcmToken) {
+            debugLogger.log('Login', '✅ FCM 토큰 획득', { token: fcmToken.substring(0, 20) + '...' });
+            
+            const response = await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ device_token: fcmToken })
+            });
+            
+            if (response.ok) {
+              debugLogger.log('Login', '✅ FCM 토큰이 저장되었습니다.');
+            } else {
+              debugLogger.error('Login', 'FCM 토큰 저장 실패', { status: response.status });
+            }
+          }
+        } else {
+          debugLogger.log('Login', '⚠️ Notification 권한 거부됨');
         }
+      } else {
+        debugLogger.log('Login', '모바일 환경 - Capacitor FCM 사용 (자동 처리됨)');
       }
     } catch (err) {
-      console.log('FCM 토큰 저장 중 오류:', err);
+      debugLogger.error('Login', 'FCM 토큰 저장 중 오류', { error: err.message });
     }
   };
 
@@ -39,6 +61,8 @@ function Login() {
     e.preventDefault();
     setError('');
     try {
+      debugLogger.log('Login', '로그인 시도 시작');
+      
       const data = await login({ email, password });
       if (autoLogin) {
         localStorage.setItem('token', data.access_token);
@@ -48,12 +72,16 @@ function Login() {
         sessionStorage.setItem('user', JSON.stringify(data.user));
       }
       
+      debugLogger.log('Login', '✅ 로그인 성공', { userId: data.user?.id });
+      
       // 로그인 후 FCM 토큰 저장
       await saveFCMToken();
       
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || '로그인에 실패했습니다.');
+      const errorMsg = err.response?.data?.detail || '로그인에 실패했습니다.';
+      debugLogger.error('Login', '로그인 실패', { error: errorMsg });
+      setError(errorMsg);
     }
   };
 

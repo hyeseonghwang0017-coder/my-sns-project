@@ -1,6 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
+import { initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+
 const firebaseConfig = {
   apiKey: "AIzaSyDIaYW8cllMNuwNGFoT4GXxgZz0a3-iNZc",
   authDomain: "ggame-a9c4c.firebaseapp.com",
