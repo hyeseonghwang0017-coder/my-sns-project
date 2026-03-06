@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import { login } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [autoLogin, setAutoLogin] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
     try {
       const data = await login({ email, password });
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      if (autoLogin) {
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+      } else {
+        sessionStorage.setItem('token', data.access_token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
+      }
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || '로그인에 실패했습니다.');
@@ -28,6 +34,18 @@ function Login() {
       <h2>로그인</h2>
       {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
       <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            id="autoLogin"
+            checked={autoLogin}
+            onChange={() => setAutoLogin((prev) => !prev)}
+            style={{ marginRight: '8px' }}
+          />
+          <label htmlFor="autoLogin" style={{ fontSize: '15px', color: '#333', cursor: 'pointer' }}>
+            자동로그인 (브라우저/앱을 꺼도 유지)
+          </label>
+        </div>
         <div style={{ marginBottom: '15px' }}>
           <label>이메일:</label>
           <input

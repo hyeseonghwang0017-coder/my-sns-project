@@ -413,7 +413,8 @@ function Home() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    // localStorage(자동로그인) 또는 sessionStorage(일반로그인)에서 토큰을 읽음
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
       navigate('/login');
       return;
@@ -567,6 +568,8 @@ function Home() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     navigate('/login');
   };
 
