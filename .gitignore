@@ -29,6 +29,9 @@ env/
 .env.local
 .env.*.local
 
+# Firebase
+firebase-credentials.json
+
 # IDE
 .vscode/
 .idea/
