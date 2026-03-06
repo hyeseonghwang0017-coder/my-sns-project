@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { messaging, getToken, onMessage } from '../firebase';
 import {
   getMyProfile,
   getPosts,
@@ -385,7 +386,7 @@ function Home() {
   const categories = ['전체', '공지', '일상', '영화', '게임'];
   const saveDeviceToken = async (token) => {
     try {
-      await fetch('http://127.0.0.1:8000/api/users/device-token', {
+      await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,15 +420,26 @@ function Home() {
     }
 
     const fetchProfile = async () => {
+      
       try {
         const profile = await getMyProfile();
         setUser(profile);
-                // Swing2App 디바이스 토큰 저장
-        if (window.swing2app) {
-          window.swing2app.getDeviceToken((token) => {
-            saveDeviceToken(token);
-          });
+            try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const fcmToken = await getToken(messaging, {
+          vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
+        });
+        
+        if (fcmToken) {
+          await saveDeviceToken(fcmToken);
+          console.log('FCM 토큰 저장 완료:', fcmToken);
         }
+      }
+    } catch (err) {
+      console.log('FCM 토큰 가져오기 실패:', err);
+    }
+
         const category = selectedCategory === '전체' ? null : selectedCategory;
         const list = await getPosts(1, 1000, category);
         setPosts(list);
@@ -511,7 +523,7 @@ function Home() {
           } else {
             setPosts((prev) => [...prev, ...newPosts]);
             setHasMore(newPosts.length === 1000);
-
+              // ...existing code...
             // 새로운 게시글들의 댓글 로드
             const commentsList = await Promise.all(
               newPosts.map((post) => getPostComments(post.id).catch(() => []))
