@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { messaging, getToken, onMessage } from '../firebase';
+import { messaging, getToken } from '../firebase';
 import {
   getMyProfile,
   getPosts,
@@ -419,23 +419,6 @@ function Home() {
       navigate('/login');
       return;
     }
-
-      // FCM 포그라운드 메시지 수신 핸들러 등록
-      if ('Notification' in window && 'serviceWorker' in navigator) {
-        onMessage(messaging, (payload) => {
-          console.log('포그라운드 FCM 메시지 수신:', payload);
-          if (payload?.notification) {
-            const { title, body } = payload.notification;
-            // 브라우저 알림 표시
-            if (Notification.permission === 'granted') {
-              new Notification(title || '새 알림', {
-                body: body || '',
-                icon: '/logo192.png',
-              });
-            }
-          }
-        });
-      }
 
     const fetchProfile = async () => {
       
