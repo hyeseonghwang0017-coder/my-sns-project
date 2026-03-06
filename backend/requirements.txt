@@ -11,6 +11,7 @@ ecdsa==0.19.1
 email-validator==2.3.0
 exceptiongroup==1.3.1
 fastapi==0.128.1
+firebase-admin==6.1.0
 h11==0.16.0
 httptools==0.7.1
 idna==3.11
