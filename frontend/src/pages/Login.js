@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { login } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-
+import { messaging, getToken } from '../firebase';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +9,31 @@ function Login() {
   const [autoLogin, setAutoLogin] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const saveFCMToken = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const fcmToken = await getToken(messaging, {
+          vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
+        });
+        
+        if (fcmToken) {
+          await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ device_token: fcmToken })
+          });
+          console.log('✅ FCM 토큰이 저장되었습니다.');
+        }
+      }
+    } catch (err) {
+      console.log('FCM 토큰 저장 중 오류:', err);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,6 +47,10 @@ function Login() {
         sessionStorage.setItem('token', data.access_token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
       }
+      
+      // 로그인 후 FCM 토큰 저장
+      await saveFCMToken();
+      
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || '로그인에 실패했습니다.');
