@@ -94,24 +94,14 @@ const saveFCMTokenToServer = async (token) => {
  * 포그라운드 메시지 처리
  */
 const handleForegroundMessage = (notification) => {
-  debugLogger.log('FCM', '🔔 포그라운드 알림 표시', {
+  debugLogger.log('FCM', '🔔 포그라운드 메시지 로그', {
     title: notification.title,
     body: notification.body
   });
 
-  // 브라우저 알림 API를 통한 표시 시도
-  try {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(notification.title || '새 알림', {
-        body: notification.body || '',
-        icon: '/icon-192x192.png',
-        badge: '/icon-192x192.png',
-        tag: `notification-${Date.now()}`
-      });
-    }
-  } catch (err) {
-    debugLogger.error('FCM', '포그라운드 알림 표시 실패', { error: err.message });
-  }
+  // 🔴 중복 방지: 포그라운드 메시지는 로그만 기록
+  // Capacitor Firebase Messaging이 자동으로 알림을 표시합니다
+  console.log('[capacitorFCM.js] 포그라운드 메시지 수신 - Capacitor에서 자동 처리');
 };
 
 export default initializeCapacitorFCM;
