@@ -8,7 +8,6 @@ import Profile from './pages/Profile';
 import AllPosts from './pages/AllPosts';
 import DebugLogs from './pages/DebugLogs';
 import initializeCapacitorFCM from './utils/capacitorFCM';
-import { messaging, onMessage } from './firebase';
 import debugLogger from './utils/debugLogger';
 
 function App() {
@@ -19,30 +18,9 @@ function App() {
       debugLogger.error('App', 'FCM 초기화 실패', { error: err.message });
     });
 
-    // 웹 환경에서 포그라운드 메시지 수신
-    // ⚠️ 주의: 서비스워커 또는 Capacitor가 이미 알림을 자동으로 표시
-    let unsubscribe;
-    try {
-      unsubscribe = onMessage(messaging, (payload) => {
-        debugLogger.log('App', '📨 포그라운드 메시지 수신 (로그만)', {
-          title: payload.notification?.title,
-          body: payload.notification?.body
-        });
-        
-        // 🔴 중복 알림 방지: 메시지 수신 시 아무것도 하지 않음
-        // 서비스워커와 Capacitor에서 이미 알림을 자동으로 표시함
-        console.log('[App.js] 메시지 처리 완료 (자동 표시)');
-      });
-    } catch (err) {
-      debugLogger.log('App', '웹 메시지 리스너 설정 실패 (선택사항)', { message: err.message });
-    }
-
-    // cleanup: 컴포넌트 언마운트 시 리스너 제거
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
+    // 🔴 FCM과 Capacitor가 자동으로 알림을 표시하므로
+    // onMessage 리스너 제거하여 중복 방지
+    // (웹/앱 모두에서 자동 표시)
   }, []);
 
   return (

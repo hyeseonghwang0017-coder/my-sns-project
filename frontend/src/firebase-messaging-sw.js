@@ -32,40 +32,9 @@ try {
   console.error('[Service Worker] Messaging 초기화 실패:', error);
 }
 
-// 백그라운드 메시지 처리 (중복 방지)
-if (messaging) {
-  messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    
-    // 중복 방지: 이미 표시된 알림은 무시
-    if (!payload.notification) {
-      console.log('[firebase-messaging-sw.js] 알림 데이터 없음');
-      return;
-    }
-    
-    const notificationTitle = payload.notification.title || '새 알림';
-    const notificationOptions = {
-      body: payload.notification.body || '',
-      icon: '/icon-192x192.png',
-      badge: '/icon-192x192.png',
-      data: payload.data || {},
-      tag: 'notification', // 고유 태그 사용 (같은 tag면 이전 알림 교체)
-      requireInteraction: false
-    };
-
-    console.log('[firebase-messaging-sw.js] 알림 표시 시도:', notificationTitle);
-    
-    try {
-      self.registration.showNotification(notificationTitle, notificationOptions);
-      console.log('[firebase-messaging-sw.js] 알림 표시 성공');
-    } catch (error) {
-      console.error('[firebase-messaging-sw.js] 알림 표시 실패:', error);
-    }
-  });
-  console.log('[Service Worker] onBackgroundMessage 핸들러 등록 완료');
-} else {
-  console.error('[Service Worker] messaging이 초기화되지 않음');
-}
+// 🔴 onBackgroundMessage를 등록하지 않으면 FCM이 자동으로 알림을 표시합니다.
+// 수동 처리를 제거하여 중복 알림 문제 해결
+// (이전 코드는 중복 표시로 인한 문제 발생)
 
 // 알림 클릭 처리
 self.addEventListener('notificationclick', (event) => {
