@@ -32,7 +32,7 @@ try {
   console.error('[Service Worker] Messaging 초기화 실패:', error);
 }
 
-// 백그라운드 메시지 처리 (한 번만 표시)
+// 백그라운드 메시지 처리 (중복 방지)
 if (messaging) {
   messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
@@ -49,7 +49,7 @@ if (messaging) {
       icon: '/icon-192x192.png',
       badge: '/icon-192x192.png',
       data: payload.data || {},
-      tag: `notification-${Date.now()}`, // 각 알림에 고유 태그
+      tag: 'notification', // 고유 태그 사용 (같은 tag면 이전 알림 교체)
       requireInteraction: false
     };
 

@@ -20,6 +20,7 @@ function App() {
     });
 
     // 웹 환경에서 포그라운드 메시지 수신
+    // ⚠️ 주의: 서비스워커가 이미 알림을 표시하므로, 포그라운드에서는 로그만 기록
     try {
       onMessage(messaging, (payload) => {
         debugLogger.log('App', '📨 포그라운드 메시지 수신', {
@@ -27,22 +28,9 @@ function App() {
           body: payload.notification?.body
         });
         
-        // 포그라운드에서 받은 메시지를 브라우저 알림으로 표시
-        if (payload.notification) {
-          const notificationTitle = payload.notification.title || '새 알림';
-          const notificationOptions = {
-            body: payload.notification.body || '',
-            icon: '/icon-192x192.png',
-            badge: '/icon-192x192.png',
-            tag: `notification-${Date.now()}`
-          };
-          
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(registration => {
-              registration.showNotification(notificationTitle, notificationOptions);
-            });
-          }
-        }
+        // 🔴 중복 알림 방지: 포그라운드에서는 수동으로 알림을 표시하지 않음
+        // 서비스워커(firebase-messaging-sw.js)에서 자동으로 표시됨
+        console.log('[App.js] 포그라운드 메시지 처리 완료 (서비스워커에서 표시)');
       });
     } catch (err) {
       debugLogger.log('App', '웹 메시지 리스너 설정 (선택사항)', { message: err.message });
