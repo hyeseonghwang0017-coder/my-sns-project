@@ -7,7 +7,18 @@ from typing import Dict
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
-from utils.push_notification import send_push_notification
+from utils.push_notification import send_push_notification, PushNotificationError
+
+async def remove_invalid_token(user_id: str, db):
+    """무효한 토큰 제거"""
+    try:
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"device_token": None}}
+        )
+        print(f"  ✅ 사용자 {user_id}의 무효 토큰 제거됨")
+    except Exception as e:
+        print(f"  ❌ 토큰 제거 실패: {e}")
 
 router = APIRouter(prefix="/api/profiles", tags=["Profiles"])
 
@@ -232,11 +243,19 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
 
         # 푸시 알림 전송
         if profile_user.get("device_token"):
-            send_push_notification(
-                [profile_user["device_token"]],
-                "새 방명록 글 📝",
-                f"{author['display_name']}님이 방명록에 글을 남겼습니다."
-            )
+            try:
+                # invalid 토큰 감지 시 제거하는 콜백
+                async def handle_invalid_token(token: str):
+                    await remove_invalid_token(profile_user["_id"], db)
+                
+                send_push_notification(
+                    [profile_user["device_token"]],
+                    "새 방명록 글 📝",
+                    f"{author['display_name']}님이 방명록에 글을 남겼습니다.",
+                    on_invalid_token=handle_invalid_token
+                )
+            except Exception as e:
+                print(f"  ⚠️ 방명록 푸시 알림 발송 실패: {e}")
     
     return GuestbookResponse(
         id=str(entry_doc["_id"]),

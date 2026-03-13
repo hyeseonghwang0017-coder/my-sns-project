@@ -6,9 +6,20 @@ from utils.database import get_db, parse_object_id
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
-from utils.push_notification import send_push_notification
+from utils.push_notification import send_push_notification, PushNotificationError
 
 router = APIRouter(prefix="/api/posts", tags=["Posts"])
+
+async def remove_invalid_token(user_id: str, db):
+    """무효한 토큰 제거"""
+    try:
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"device_token": None}}
+        )
+        print(f"  ✅ 사용자 {user_id}의 무효 토큰 제거됨")
+    except Exception as e:
+        print(f"  ❌ 토큰 제거 실패: {e}")
 
 def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
@@ -247,16 +258,23 @@ async def like_post(post_id: str, request: Request, user_id: str = Depends(get_c
                 print(f"\n📤 좋아요 푸시 알림 발송 시도")
                 print(f"  수신자: {author.get('email')}")
                 print(f"  토큰: {author['device_token'][:30]}...")
+                
+                # invalid 토큰 감지 시 제거하는 콜백
+                async def handle_invalid_token(token: str):
+                    await remove_invalid_token(author["_id"], db)
+                
                 result = send_push_notification(
                     [author["device_token"]],
                     "새 좋아요 ❤️",
-                    f"{user['display_name']}님이 좋아요를 눌렀습니다"
+                    f"{user['display_name']}님이 좋아요를 눌렀습니다",
+                    on_invalid_token=handle_invalid_token
                 )
                 print(f"  결과: {result}\n")
             except Exception as e:
                 print(f"\n❌ 좋아요 푸시 알림 발송 실패: {e}\n")
         else:
             print(f"\n⚠️ 좋아요 알림 미발송: 대상 유저 또는 token 없음\n")
+
 
     post = await db.posts.find_one({"_id": post["_id"]})
     return await build_post_response(post, db)
@@ -375,10 +393,16 @@ async def create_comment(post_id: str, payload: CommentCreate, request: Request,
                 print(f"  수신자: {recipient.get('email')}")
                 print(f"  토큰: {recipient['device_token'][:30]}...")
                 print(f"  메시지: {message}")
+                
+                # invalid 토큰 감지 시 제거하는 콜백
+                async def handle_invalid_token(token: str):
+                    await remove_invalid_token(recipient["_id"], db)
+                
                 result = send_push_notification(
                     [recipient["device_token"]],
                     "새 댓글 💬" if not parent_id else "새 답글 💬",
-                    message
+                    message,
+                    on_invalid_token=handle_invalid_token
                 )
                 print(f"  결과: {result}\n")
             except Exception as e:
@@ -386,6 +410,7 @@ async def create_comment(post_id: str, payload: CommentCreate, request: Request,
         else:
             notification_type = "댓글" if not parent_id else "답글"
             print(f"\n⚠️ {notification_type} 알림 미발송: 대상 유저 또는 token 없음\n")
+
     
     return await build_comment_response(comment_doc, db)
 
