@@ -4,6 +4,8 @@ import os
 import json
 import tempfile
 from typing import Callable, Optional, List
+import asyncio
+import inspect
 
 # Firebase 초기화 (한 번만 실행)
 if not firebase_admin._apps:
@@ -123,7 +125,13 @@ def send_push_notification(
                 if error_type in [PushNotificationError.NOT_REGISTERED, PushNotificationError.INVALID_TOKEN]:
                     if on_invalid_token:
                         try:
-                            on_invalid_token(token)
+                            # 비동기 함수인지 확인
+                            if inspect.iscoroutinefunction(on_invalid_token):
+                                # 비동기 함수인 경우 - 모듈 수준에서 처리 불가, 로그만 남김
+                                print(f"  ℹ️  비동기 토큰 제거 콜백: 모듈 수준에서는 실행 불가 (라우트에서 자동 처리됨)")
+                            else:
+                                # 동기 함수인 경우
+                                on_invalid_token(token)
                         except Exception as callback_error:
                             print(f"  ⚠️ 토큰 제거 콜백 실행 실패: {callback_error}")
                 
