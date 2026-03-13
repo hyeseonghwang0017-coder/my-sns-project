@@ -3,6 +3,7 @@ import { login } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { messaging, getToken } from '../firebase';
 import { Capacitor } from '@capacitor/core';
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import debugLogger from '../utils/debugLogger';
 
 function Login() {
@@ -16,41 +17,60 @@ function Login() {
     try {
       debugLogger.log('Login', 'FCM 토큰 저장 시작');
       
-      // 웹 환경에서만 브라우저 FCM 사용
-      if (!Capacitor.isNativePlatform()) {
-        debugLogger.log('Login', '웹 환경 - Firebase FCM 토큰 요청');
+      let fcmToken = null;
+      
+      // 모바일 환경 (Capacitor)
+      if (Capacitor.isNativePlatform()) {
+        debugLogger.log('Login', '📱 모바일 환경 - Capacitor FCM 토큰 요청');
+        try {
+          const result = await FirebaseMessaging.getToken();
+          fcmToken = result.token;
+          debugLogger.log('Login', '✅ Capacitor FCM 토큰 획득', { token: fcmToken?.substring(0, 20) + '...' });
+        } catch (err) {
+          debugLogger.error('Login', 'Capacitor FCM 토큰 획득 실패', { error: err.message });
+          return;
+        }
+      }
+      // 웹 환경
+      else {
+        debugLogger.log('Login', '🌐 웹 환경 - Firebase FCM 토큰 요청');
         
         const permission = await Notification.requestPermission();
         debugLogger.log('Login', `Notification 권한: ${permission}`);
         
         if (permission === 'granted') {
-          const fcmToken = await getToken(messaging, {
+          fcmToken = await getToken(messaging, {
             vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
           });
-          
-          if (fcmToken) {
-            debugLogger.log('Login', '✅ FCM 토큰 획득', { token: fcmToken.substring(0, 20) + '...' });
-            
-            const response = await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
-              },
-              body: JSON.stringify({ device_token: fcmToken })
-            });
-            
-            if (response.ok) {
-              debugLogger.log('Login', '✅ FCM 토큰이 저장되었습니다.');
-            } else {
-              debugLogger.error('Login', 'FCM 토큰 저장 실패', { status: response.status });
-            }
-          }
+          debugLogger.log('Login', '✅ 웹 FCM 토큰 획득', { token: fcmToken?.substring(0, 20) + '...' });
         } else {
           debugLogger.log('Login', '⚠️ Notification 권한 거부됨');
+          return;
         }
-      } else {
-        debugLogger.log('Login', '모바일 환경 - Capacitor FCM 사용 (자동 처리됨)');
+      }
+      
+      // 토큰이 있으면 서버에 저장
+      if (fcmToken) {
+        const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ device_token: fcmToken })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          debugLogger.log('Login', '✅ FCM 토큰이 저장되었습니다.', data);
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          debugLogger.error('Login', 'FCM 토큰 저장 실패', { 
+            status: response.status,
+            detail: errData.detail || errData.message
+          });
+        }
       }
     } catch (err) {
       debugLogger.error('Login', 'FCM 토큰 저장 중 오류', { error: err.message });

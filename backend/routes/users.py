@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
-from models.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token
+from models.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token, DeviceTokenRequest
 from utils.auth import hash_password, verify_password, create_access_token, get_current_user
 from utils.database import get_db
 from datetime import datetime, timezone
@@ -192,7 +192,7 @@ async def get_all_users(request: Request, limit: int = 50):
     ]
 @router.post("/device-token")
 async def save_device_token(
-    token_data: dict,
+    token_data: DeviceTokenRequest,
     request: Request,
     user_id: str = Depends(get_current_user)
 ):
@@ -200,7 +200,7 @@ async def save_device_token(
     
     await db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"device_token": token_data.get("device_token")}}
+        {"$set": {"device_token": token_data.device_token}}
     )
     
     return {"message": "Device token saved"}

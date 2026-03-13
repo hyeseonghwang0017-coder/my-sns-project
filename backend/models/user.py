@@ -38,3 +38,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+# 디바이스 토큰 저장 요청
+class DeviceTokenRequest(BaseModel):
+    device_token: str

@@ -17,7 +17,9 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import AvatarBubble from '../components/AvatarBubble';
-import { messaging, onMessage } from '../firebase';
+import { messaging, onMessage, getToken } from '../firebase';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import debugLogger from '../utils/debugLogger';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -429,12 +431,83 @@ function Home() {
         // 유저 리스트 가져오기
         const users = await getAllUsers(50);
         setAllUsers(users);
+        
+        // 프로필 로드 후 FCM 토큰 저장
+        await saveFCMTokenToBackend();
       } catch (err) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
         navigate('/login');
+      }
+    };
+
+    const saveFCMTokenToBackend = async () => {
+      try {
+        let fcmToken = null;
+        
+        // 모바일 환경 (Capacitor)
+        if (Capacitor.isNativePlatform()) {
+          debugLogger.log('Home', '📱 모바일 환경 - Capacitor FCM 토큰 확인');
+          try {
+            const result = await FirebaseMessaging.getToken();
+            fcmToken = result.token;
+            if (fcmToken) {
+              debugLogger.log('Home', '✅ Capacitor FCM 토큰 획득', { token: fcmToken?.substring(0, 20) + '...' });
+            }
+          } catch (err) {
+            debugLogger.error('Home', 'Capacitor FCM 토큰 획득 실패', { error: err.message });
+            return;
+          }
+        }
+        // 웹 환경
+        else {
+          debugLogger.log('Home', '🌐 웹 환경 - Firebase FCM 토큰 확인');
+          
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+              fcmToken = await getToken(messaging, {
+                vapidKey: 'BAbOZ5gCHtpgSUTPojVTImHO9wnQW2ffriHZ3fZ4Ug6yD-gB11oCnH7Ybl2QcmaeI8KhgjYTu4jR_E5rsI3u8zA'
+              });
+              if (fcmToken) {
+                debugLogger.log('Home', '✅ 웹 FCM 토큰 획득', { token: fcmToken?.substring(0, 20) + '...' });
+              }
+            } catch (err) {
+              debugLogger.error('Home', '웹 FCM 토큰 획득 실패', { error: err.message });
+              return;
+            }
+          } else {
+            debugLogger.log('Home', '⚠️ Notification 권한 없음');
+            return;
+          }
+        }
+        
+        // 토큰이 있으면 서버에 저장
+        if (fcmToken) {
+          const authToken = token;
+          const response = await fetch('https://my-sns-project.onrender.com/api/users/device-token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ device_token: fcmToken })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            debugLogger.log('Home', '✅ FCM 토큰이 서버에 저장되었습니다.', data);
+          } else {
+            const errData = await response.json().catch(() => ({}));
+            debugLogger.error('Home', 'FCM 토큰 저장 실패', { 
+              status: response.status,
+              detail: errData.detail || errData.message
+            });
+          }
+        }
+      } catch (err) {
+        debugLogger.error('Home', 'FCM 토큰 저장 중 오류', { error: err.message });
       }
     };
 
