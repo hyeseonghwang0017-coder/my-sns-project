@@ -7,6 +7,12 @@ from typing import Callable, Optional, List
 import asyncio
 import inspect
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCAL_CREDENTIAL_PATHS = [
+    os.path.join(BASE_DIR, "firebase-credentials.json"),
+    os.path.join(os.getcwd(), "firebase-credentials.json"),
+]
+
 # Firebase 초기화 (한 번만 실행)
 if not firebase_admin._apps:
     firebase_cred_json = os.getenv("FIREBASE_CREDENTIALS")
@@ -23,13 +29,14 @@ if not firebase_admin._apps:
             print("✅ Firebase initialized from environment variable")
         except Exception as e:
             print(f"❌ Firebase initialization failed: {e}")
-    elif os.path.exists("firebase-credentials.json"):
-        # 로컬 개발용: 파일에서 읽기
-        cred = credentials.Certificate("firebase-credentials.json")
-        firebase_admin.initialize_app(cred)
-        print("✅ Firebase initialized from local file")
     else:
-        print("⚠️ Firebase credentials not found. Push notifications will be disabled.")
+        local_cred_path = next((path for path in LOCAL_CREDENTIAL_PATHS if os.path.exists(path)), None)
+        if local_cred_path:
+            cred = credentials.Certificate(local_cred_path)
+            firebase_admin.initialize_app(cred)
+            print(f"✅ Firebase initialized from local file: {local_cred_path}")
+        else:
+            print("⚠️ Firebase credentials not found. Set FIREBASE_CREDENTIALS or provide backend/firebase-credentials.json. Push notifications will be disabled.")
 
 # 에러 타입 정의
 class PushNotificationError:
@@ -60,25 +67,24 @@ def classify_error(error_message: str) -> str:
         return PushNotificationError.UNKNOWN
 
 
-def send_push_notification(
+async def send_push_notification(
     device_tokens, 
     title, 
     body,
     on_invalid_token: Optional[Callable[[str], None]] = None
 ):
     """
-    Firebase FCM으로 푸시 알림 전송
+    Firebase FCM으로 푸시 알림 전송 (async)
     
     Args:
         device_tokens: list of device tokens (사용자들의 디바이스 토큰)
         title: 알림 제목
         body: 알림 내용
-        on_invalid_token: 무효한 토큰 발견 시 호출될 콜백 함수 (토큰 문자열을 인자로 받음)
+        on_invalid_token: 무효한 토큰 발견 시 호출될 콜백 함수 (동기 또는 비동기, 토큰 문자열을 인자로 받음)
     
     Returns:
         dict: 성공/실패 카운트와 에러 상세정보를 포함한 응답
     """
-    # Firebase가 초기화되지 않으면 조용히 반환
     if not firebase_admin._apps:
         print("⚠️ Firebase not initialized. Push notification skipped.")
         return {"success_count": 0, "failure_count": 0, "skipped": True}
@@ -87,12 +93,10 @@ def send_push_notification(
         print("No device tokens provided")
         return None
     
-    # device_tokens가 문자열이면 리스트로 변환
     if isinstance(device_tokens, str):
         device_tokens = [device_tokens]
     
     try:
-        # 각 토큰에 개별적으로 메시지 전송
         success_count = 0
         failure_count = 0
         error_details = {
@@ -111,9 +115,18 @@ def send_push_notification(
                         title=title,
                         body=body,
                     ),
+                    webpush=messaging.WebpushConfig(
+                        notification=messaging.WebpushNotification(
+                            title=title,
+                            body=body,
+                        ),
+                        fcm_options=messaging.WebpushFCMOptions(
+                            link="/",
+                        ),
+                    ),
                     token=token,
                 )
-                response = messaging.send(message)
+                response = await asyncio.to_thread(messaging.send, message)
                 print(f'✅ 메시지 전송 성공 (토큰: {token[:20]}...): {response}')
                 success_count += 1
             except Exception as token_error:
@@ -121,16 +134,12 @@ def send_push_notification(
                 error_type = classify_error(error_str)
                 error_details[error_type].append(token)
                 
-                # NotRegistered 또는 Invalid Token인 경우 콜백 실행
                 if error_type in [PushNotificationError.NOT_REGISTERED, PushNotificationError.INVALID_TOKEN]:
                     if on_invalid_token:
                         try:
-                            # 비동기 함수인지 확인
                             if inspect.iscoroutinefunction(on_invalid_token):
-                                # 비동기 함수인 경우 - 모듈 수준에서 처리 불가, 로그만 남김
-                                print(f"  ℹ️  비동기 토큰 제거 콜백: 모듈 수준에서는 실행 불가 (라우트에서 자동 처리됨)")
+                                await on_invalid_token(token)
                             else:
-                                # 동기 함수인 경우
                                 on_invalid_token(token)
                         except Exception as callback_error:
                             print(f"  ⚠️ 토큰 제거 콜백 실행 실패: {callback_error}")
@@ -140,7 +149,6 @@ def send_push_notification(
         
         print(f'\n총 {success_count}개 성공, {failure_count}개 실패')
         
-        # 에러 요약 출력
         if failure_count > 0:
             print("\n📊 에러 분류:")
             for error_type, tokens in error_details.items():

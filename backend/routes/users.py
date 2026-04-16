@@ -200,7 +200,7 @@ async def save_device_token(
     
     await db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"device_token": token_data.device_token}}
+        {"$addToSet": {"device_tokens": token_data.device_token}}
     )
     
     return {"message": "Device token saved"}

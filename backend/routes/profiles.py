@@ -9,12 +9,12 @@ from typing import Optional
 from bson import ObjectId
 from utils.push_notification import send_push_notification, PushNotificationError
 
-async def remove_invalid_token(user_id: str, db):
-    """무효한 토큰 제거"""
+async def remove_invalid_token(user_id: str, invalid_token: str, db):
+    """무효한 토큰을 device_tokens 배열에서 제거"""
     try:
         await db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {"device_token": None}}
+            {"$pull": {"device_tokens": invalid_token}}
         )
         print(f"  ✅ 사용자 {user_id}의 무효 토큰 제거됨")
     except Exception as e:
@@ -242,14 +242,14 @@ async def create_guestbook_entry(user_id: str, payload: GuestbookCreate, request
         })
 
         # 푸시 알림 전송
-        if profile_user.get("device_token"):
+        device_tokens = profile_user.get("device_tokens", [])
+        if device_tokens:
             try:
-                # invalid 토큰 감지 시 제거하는 콜백
                 async def handle_invalid_token(token: str):
-                    await remove_invalid_token(profile_user["_id"], db)
+                    await remove_invalid_token(str(profile_user["_id"]), token, db)
                 
-                send_push_notification(
-                    [profile_user["device_token"]],
+                await send_push_notification(
+                    device_tokens,
                     "새 방명록 글 📝",
                     f"{author['display_name']}님이 방명록에 글을 남겼습니다.",
                     on_invalid_token=handle_invalid_token
