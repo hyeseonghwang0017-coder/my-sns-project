@@ -121,7 +121,7 @@ async def send_push_notification(
                             body=body,
                         ),
                         fcm_options=messaging.WebpushFCMOptions(
-                            link="/",
+                            link=os.getenv("FRONTEND_URL", "https://my-sns-project.onrender.com") + "/",
                         ),
                     ),
                     token=token,
