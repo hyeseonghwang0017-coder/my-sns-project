@@ -32,6 +32,9 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "https://ggamehome.vercel.app",
+    "https://localhost",
+    "capacitor://localhost",
+    "http://localhost",
 ]
 
 _extra = os.getenv("EXTRA_CORS_ORIGINS", "")
