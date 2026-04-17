@@ -6,6 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -42,9 +43,13 @@ api.interceptors.response.use(
 /** FastAPI detail이 문자열·배열(422)·객체일 때 사용자에게 보여줄 문장으로 정리 */
 export function formatAxiosError(err) {
   if (!err?.response) {
-    return err?.message?.includes('Network Error')
-      ? '서버에 연결할 수 없습니다. 백엔드(uvicorn)가 실행 중인지 확인하세요.'
-      : err?.message || '요청에 실패했습니다.';
+    if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+      return '서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.';
+    }
+    if (err?.message?.includes('Network Error')) {
+      return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+    }
+    return err?.message || '요청에 실패했습니다.';
   }
   const d = err.response.data?.detail;
   if (typeof d === 'string') return d;
