@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login } from '../services/api';
+import { login, formatAxiosError } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { messaging, getToken } from '../firebase';
 import { Capacitor } from '@capacitor/core';
@@ -99,7 +99,7 @@ function Login() {
       
       navigate('/');
     } catch (err) {
-      const errorMsg = err.response?.data?.detail || '로그인에 실패했습니다.';
+      const errorMsg = formatAxiosError(err) || '로그인에 실패했습니다.';
       debugLogger.error('Login', '로그인 실패', { error: errorMsg });
       setError(errorMsg);
     }

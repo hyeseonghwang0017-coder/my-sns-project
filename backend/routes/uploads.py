@@ -5,11 +5,17 @@ from utils.cloudinary import upload_image
 router = APIRouter(prefix="/api/uploads", tags=["Uploads"])
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 @router.post("/image", status_code=status.HTTP_201_CREATED)
 async def upload_image_file(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+    await file.seek(0)
 
     try:
         result = upload_image(file.file)

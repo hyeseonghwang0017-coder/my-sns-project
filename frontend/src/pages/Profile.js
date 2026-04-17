@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './Profile.mobile.css';
 import linkifyHtml from 'linkify-html';
+import DOMPurify from 'dompurify';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getUserProfile,
@@ -47,13 +48,15 @@ function Profile() {
   const displayedPosts = posts.slice((currentPage - 1) * postsPerPage, currentPage * postsPerPage);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
       navigate('/login');
       return;
     }
 
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const userData = JSON.parse(
+      localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'
+    );
     setCurrentUser(userData);
 
     const fetchProfileData = async () => {
@@ -549,10 +552,12 @@ function Profile() {
                   className="post-content"
                   style={{ whiteSpace: 'pre-wrap' }}
                   dangerouslySetInnerHTML={{
-                    __html: linkifyHtml(post.content || '', {
-                      target: '_blank',
-                      rel: 'noopener noreferrer',
-                    })
+                    __html: DOMPurify.sanitize(
+                      linkifyHtml(post.content || '', {
+                        target: '_blank',
+                        rel: 'noopener noreferrer',
+                      })
+                    )
                   }}
                 />
                 {post.image_url && (

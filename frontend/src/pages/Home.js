@@ -25,6 +25,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import EmojiPicker from 'emoji-picker-react';
 import linkifyHtml from 'linkify-html';
+import DOMPurify from 'dompurify';
 import { formatToKSTShort } from '../utils/dateFormatter';
 import LikeListPopup from '../components/LikeListPopup';
 
@@ -78,7 +79,7 @@ const renderContentWithLinks = (text) => {
 function CommentItem({
   postId,
   comment,
-  depth = 0,
+  isReply = false,
   currentUserId,
   replyingTo,
   setReplyingTo,
@@ -95,10 +96,8 @@ function CommentItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(comment.content);
   const isOwner = comment.author_id === currentUserId;
-  const isReply = depth > 0;
   const isDeleted = comment.is_deleted;
 
-  // 삭제된 댓글이고 자식이 없으면 렌더링하지 않음
   if (isDeleted && (!comment.replies || comment.replies.length === 0)) {
     return null;
   }
@@ -199,6 +198,11 @@ function CommentItem({
         />
       ) : (
         <p style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', color: '#111827' }}>
+          {comment.replyToUsername && (
+            <span style={{ color: '#2563eb', fontWeight: 600, marginRight: '4px' }}>
+              @{comment.replyToUsername}
+            </span>
+          )}
           {renderContentWithLinks(comment.content)}
         </p>
       )}
@@ -314,31 +318,6 @@ function CommentItem({
               취소
             </button>
           </div>
-        </div>
-      )}
-
-      {comment.replies?.length > 0 && (
-        <div style={{ marginTop: '10px' }}>
-          {comment.replies.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              postId={postId}
-              comment={reply}
-              depth={depth + 1}
-              currentUserId={currentUserId}
-              replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
-              replyInputs={replyInputs}
-              setReplyInputs={setReplyInputs}
-              replyImageInputs={replyImageInputs}
-              setReplyImageInputs={setReplyImageInputs}
-              replyImagePreviews={replyImagePreviews}
-              setReplyImagePreviews={setReplyImagePreviews}
-              onReplySubmit={onReplySubmit}
-              onCommentUpdate={onCommentUpdate}
-              onCommentDelete={onCommentDelete}
-            />
-          ))}
         </div>
       )}
     </div>
@@ -753,12 +732,30 @@ function Home() {
       map[comment.id] = { ...comment, replies: [] };
     });
 
+    // 1차: 원래 트리 구조 구축
     comments.forEach((comment) => {
       if (comment.parent_id && map[comment.parent_id]) {
         map[comment.parent_id].replies.push(map[comment.id]);
       } else {
         roots.push(map[comment.id]);
       }
+    });
+
+    // 2차: 각 루트 댓글의 모든 하위 대댓글을 1단계로 평탄화 (DFS 순서)
+    roots.forEach((root) => {
+      const flatReplies = [];
+      const collectReplies = (node, isDirectChildOfRoot) => {
+        node.replies.forEach((child) => {
+          if (!isDirectChildOfRoot) {
+            child.replyToUsername = node.author_display_name || node.author_username;
+          }
+          flatReplies.push(child);
+          collectReplies(child, false);
+        });
+      };
+      collectReplies(root, true);
+      flatReplies.forEach((r) => { r.replies = []; });
+      root.replies = flatReplies;
     });
 
     return roots;
@@ -1482,10 +1479,12 @@ function Home() {
                     className="post-content"
                     style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '14px' }}
                     dangerouslySetInnerHTML={{
-                      __html: linkifyHtml(post.content || '', {
-                        target: '_blank',
-                        rel: 'noopener noreferrer',
-                      })
+                      __html: DOMPurify.sanitize(
+                        linkifyHtml(post.content || '', {
+                          target: '_blank',
+                          rel: 'noopener noreferrer',
+                        })
+                      )
                     }}
                   />
                   {/* 투표 UI 표시 */}
@@ -1537,23 +1536,45 @@ function Home() {
                   <>
                     {commentTree.length === 0 && <p style={{ color: '#888' }}>댓글이 없습니다.</p>}
                     {commentTree.map((comment) => (
-                      <CommentItem
-                        key={comment.id}
-                        postId={post.id}
-                        comment={comment}
-                        currentUserId={user.id}
-                        replyingTo={replyingTo}
-                        setReplyingTo={setReplyingTo}
-                        replyInputs={replyInputs}
-                        setReplyInputs={setReplyInputs}
-                        replyImageInputs={replyImageInputs}
-                        setReplyImageInputs={setReplyImageInputs}
-                        replyImagePreviews={replyImagePreviews}
-                        setReplyImagePreviews={setReplyImagePreviews}
-                        onReplySubmit={handleReplySubmit}
-                        onCommentUpdate={handleCommentUpdate}
-                        onCommentDelete={handleCommentDelete}
-                      />
+                      <div key={comment.id}>
+                        <CommentItem
+                          postId={post.id}
+                          comment={comment}
+                          isReply={false}
+                          currentUserId={user.id}
+                          replyingTo={replyingTo}
+                          setReplyingTo={setReplyingTo}
+                          replyInputs={replyInputs}
+                          setReplyInputs={setReplyInputs}
+                          replyImageInputs={replyImageInputs}
+                          setReplyImageInputs={setReplyImageInputs}
+                          replyImagePreviews={replyImagePreviews}
+                          setReplyImagePreviews={setReplyImagePreviews}
+                          onReplySubmit={handleReplySubmit}
+                          onCommentUpdate={handleCommentUpdate}
+                          onCommentDelete={handleCommentDelete}
+                        />
+                        {comment.replies?.map((reply) => (
+                          <CommentItem
+                            key={reply.id}
+                            postId={post.id}
+                            comment={reply}
+                            isReply={true}
+                            currentUserId={user.id}
+                            replyingTo={replyingTo}
+                            setReplyingTo={setReplyingTo}
+                            replyInputs={replyInputs}
+                            setReplyInputs={setReplyInputs}
+                            replyImageInputs={replyImageInputs}
+                            setReplyImageInputs={setReplyImageInputs}
+                            replyImagePreviews={replyImagePreviews}
+                            setReplyImagePreviews={setReplyImagePreviews}
+                            onReplySubmit={handleReplySubmit}
+                            onCommentUpdate={handleCommentUpdate}
+                            onCommentDelete={handleCommentDelete}
+                          />
+                        ))}
+                      </div>
                     ))}
                   </>
                 )}

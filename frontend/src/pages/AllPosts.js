@@ -17,7 +17,7 @@ function AllPosts() {
   const totalPages = Math.ceil(totalPosts / postsPerPage);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) {
       navigate('/login');
       return;

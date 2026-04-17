@@ -2,20 +2,24 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from models.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token, DeviceTokenRequest
 from utils.auth import hash_password, verify_password, create_access_token, get_current_user
 from utils.database import get_db
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
+limiter = Limiter(key_func=get_remote_address)
 
 def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
         return None
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
-# 회원가입
+# 회원가입 — IP당 1분 5회
 @router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
-async def signup(user: UserCreate, request: Request):
+@limiter.limit("5/minute")
+async def signup(request: Request, user: UserCreate):
     db = get_db(request)
     
     # 이메일 중복 체크
@@ -62,9 +66,10 @@ async def signup(user: UserCreate, request: Request):
     
     return Token(access_token=access_token, token_type="bearer", user=user_response)
 
-# 로그인
+# 로그인 — IP당 1분 10회
 @router.post("/login", response_model=Token)
-async def login(user: UserLogin, request: Request):
+@limiter.limit("10/minute")
+async def login(request: Request, user: UserLogin):
     db = get_db(request)
     
     # 사용자 찾기
@@ -160,16 +165,25 @@ async def update_my_profile(payload: UserUpdate, request: Request, user_id: str 
         created_at=ensure_utc(user["created_at"])
     )
 
+def _mask_email(email: str) -> str:
+    local, _, domain = email.partition("@")
+    if not domain:
+        return "***"
+    return f"{local[:2]}***@{domain}" if len(local) > 2 else f"***@{domain}"
+
 # 모든 유저 목록 조회 (닉네임, 프로필 사진만)
 @router.get("/list", response_model=list[UserResponse])
-async def get_all_users(request: Request, limit: int = 50):
+async def get_all_users(
+    request: Request,
+    limit: int = 50,
+    _user_id: str = Depends(get_current_user),
+):
     db = get_db(request)
+    limit = min(limit, 100)
     
-    # 제외할 테스트 계정 목록
     excluded_usernames = ["fish", "fox", "fox2", "dog", "dog2", "cat", "test", "테스트유저", "duck", "test123"]
     excluded_emails = ["testuser@test123", "테스트유저@test123"]
     
-    # 테스트 계정을 제외하고 생성일 기준 최신순으로 유저 목록 조회
     cursor = db.users.find({
         "username": {"$nin": excluded_usernames},
         "email": {"$nin": excluded_emails}
@@ -180,7 +194,7 @@ async def get_all_users(request: Request, limit: int = 50):
         UserResponse(
             id=str(user["_id"]),
             username=user["username"],
-            email=user["email"],
+            email=_mask_email(user["email"]),
             display_name=user["display_name"],
             display_name_color=user.get("display_name_color", "#000000"),
             bio=user.get("bio"),

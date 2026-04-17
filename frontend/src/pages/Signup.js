@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signup } from '../services/api';
+import { signup, formatAxiosError } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { messaging, getToken } from '../firebase';
 import { Capacitor } from '@capacitor/core';
@@ -39,7 +39,7 @@ function Signup() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
               },
               body: JSON.stringify({ device_token: fcmToken })
             });
@@ -87,7 +87,7 @@ function Signup() {
       
       navigate('/');
     } catch (err) {
-      const errorMsg = err.response?.data?.detail || '회원가입에 실패했습니다.';
+      const errorMsg = formatAxiosError(err) || '회원가입에 실패했습니다.';
       debugLogger.error('Signup', '회원가입 실패', { error: errorMsg });
       setError(errorMsg);
     }

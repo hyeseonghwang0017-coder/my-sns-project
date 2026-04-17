@@ -133,8 +133,10 @@ async def create_post(payload: PostCreate, request: Request, user_id: str = Depe
     return await build_post_response(post_doc, db)
 
 @router.get("/", response_model=list[PostResponse])
-async def list_posts(request: Request, page: int = 1, limit: int = 1000, category: str = None):
+async def list_posts(request: Request, page: int = 1, limit: int = 50, category: str = None):
     db = get_db(request)
+    limit = min(max(limit, 1), 100)
+    page = max(page, 1)
     skip = (page - 1) * limit
     
     # 카테고리 필터링

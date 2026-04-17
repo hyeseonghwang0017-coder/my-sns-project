@@ -11,9 +11,13 @@ const api = axios.create({
   },
 });
 
+function getStoredToken() {
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+}
+
 // 토큰을 요청 헤더에 자동으로 추가
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -34,6 +38,26 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/** FastAPI detail이 문자열·배열(422)·객체일 때 사용자에게 보여줄 문장으로 정리 */
+export function formatAxiosError(err) {
+  if (!err?.response) {
+    return err?.message?.includes('Network Error')
+      ? '서버에 연결할 수 없습니다. 백엔드(uvicorn)가 실행 중인지 확인하세요.'
+      : err?.message || '요청에 실패했습니다.';
+  }
+  const d = err.response.data?.detail;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) {
+    return d
+      .map((item) => (item && typeof item === 'object' && item.msg ? item.msg : JSON.stringify(item)))
+      .join(' ');
+  }
+  if (d && typeof d === 'object' && typeof d.message === 'string') return d.message;
+  return err.response.status === 429
+    ? '요청이 너무 많습니다. 잠시 후 다시 시도하세요.'
+    : '요청에 실패했습니다.';
+}
 
 // 회원가입
 export const signup = async (userData) => {

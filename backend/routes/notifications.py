@@ -113,8 +113,11 @@ async def delete_all_notifications(
     return None
 
 @router.post("/", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
-async def create_notification(payload: NotificationCreate, request: Request):
-    """내부용 알림 생성 엔드포인트 (인증 없음)"""
+async def create_notification(
+    payload: NotificationCreate,
+    request: Request,
+    user_id: str = Depends(get_current_user),
+):
     db = get_db(request)
     
     notification_doc = {
