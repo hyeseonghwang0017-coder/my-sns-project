@@ -85,9 +85,13 @@ function Login() {
       
       const data = await login({ email, password });
       if (autoLogin) {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
       } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         sessionStorage.setItem('token', data.access_token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
       }
