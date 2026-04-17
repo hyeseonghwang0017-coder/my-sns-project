@@ -17,7 +17,6 @@ httptools==0.7.1
 idna==3.11
 motor==3.7.1
 limits==5.8.0
-passlib==1.7.4
 pyasn1==0.6.2
 pycparser==2.23
 pydantic==2.12.5

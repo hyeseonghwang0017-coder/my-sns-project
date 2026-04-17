@@ -1,4 +1,4 @@
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Depends
@@ -8,13 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 비밀번호 암호화
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-# 세션 길이: ACCESS_TOKEN_EXPIRE_MINUTES 가 설정되면 분 단위(기존 동작), 아니면 일 단위(기본 ~10년)
 _ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 _ACCESS_TOKEN_EXPIRE_DAYS = os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "3650")
 
@@ -27,11 +24,11 @@ def _access_token_expires_at() -> datetime:
 
 def hash_password(password: str) -> str:
     """비밀번호 해시화"""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """비밀번호 확인"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 def create_access_token(data: dict) -> str:
     """JWT 토큰 생성"""
