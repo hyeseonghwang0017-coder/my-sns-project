@@ -31,7 +31,7 @@ ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-    "https://my-sns-project.vercel.app",
+    "https://ggamehome.vercel.app",
 ]
 
 _extra = os.getenv("EXTRA_CORS_ORIGINS", "")
@@ -41,7 +41,7 @@ if _extra:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://my-sns-project(-[a-z0-9-]+)?\.vercel\.app",
+    allow_origin_regex=r"https://ggamehome(-[a-z0-9-]+)?\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

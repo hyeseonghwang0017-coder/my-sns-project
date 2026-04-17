@@ -21,4 +21,4 @@ services:
       - key: FIREBASE_CREDENTIALS
         sync: false
       - key: FRONTEND_URL
-        value: https://my-sns-project.vercel.app
+        value: https://ggamehome.vercel.app
