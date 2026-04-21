@@ -983,15 +983,17 @@ function Home() {
                         </span>
                       )}
                     </div>
-                    <div style={{ 
-                      fontSize: '12px', 
-                      color: '#9ca3af',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      @{member.username}
-                    </div>
+                    {member.username ? (
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#9ca3af',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        @{member.username}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}

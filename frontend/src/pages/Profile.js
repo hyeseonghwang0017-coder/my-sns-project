@@ -467,7 +467,9 @@ function Profile() {
                       </button>
                     )}
                   </div>
-                  <p style={{ color: '#666', marginTop: '5px' }}>@{profile.username}</p>
+                  {profile.username ? (
+                    <p style={{ color: '#666', marginTop: '5px' }}>@{profile.username}</p>
+                  ) : null}
                   {profile.bio && <p style={{ marginTop: '15px', fontSize: '16px' }}>{profile.bio}</p>}
                   <p style={{ marginTop: '10px', color: '#888', fontSize: '14px' }}>
                     가입일: {formatToKSTShort(profile.created_at)}
