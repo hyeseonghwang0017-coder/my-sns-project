@@ -7,6 +7,7 @@ from slowapi.util import get_remote_address
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
+import os
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 limiter = Limiter(key_func=get_remote_address)
@@ -171,6 +172,22 @@ def _mask_email(email: str) -> str:
         return "***"
     return f"{local[:2]}***@{domain}" if len(local) > 2 else f"***@{domain}"
 
+def _parse_csv_env(var_name: str) -> list[str]:
+    value = os.getenv(var_name, "")
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+def _parse_object_id_list(raw_ids: list[str]) -> list[ObjectId]:
+    parsed = []
+    for raw_id in raw_ids:
+        try:
+            parsed.append(ObjectId(raw_id))
+        except Exception:
+            # Invalid IDs are ignored to keep /list available.
+            continue
+    return parsed
+
 # 모든 유저 목록 조회 (닉네임, 프로필 사진만)
 @router.get("/list", response_model=list[UserResponse])
 async def get_all_users(
@@ -180,14 +197,26 @@ async def get_all_users(
 ):
     db = get_db(request)
     limit = min(limit, 100)
-    
-    excluded_usernames = ["fish", "fox", "fox2", "dog", "dog2", "cat", "test", "테스트유저", "duck", "test123"]
-    excluded_emails = ["testuser@test123", "테스트유저@test123"]
-    
-    cursor = db.users.find({
-        "username": {"$nin": excluded_usernames},
-        "email": {"$nin": excluded_emails}
-    }).sort("created_at", -1).limit(limit)
+
+    default_excluded_usernames = [
+        "fish", "fox", "fox2", "dog", "dog2",
+        "cat", "test", "테스트유저", "duck", "test123"
+    ]
+    default_excluded_emails = ["testuser@test123", "테스트유저@test123"]
+
+    excluded_usernames = default_excluded_usernames + _parse_csv_env("HIDDEN_USERNAMES")
+    excluded_emails = default_excluded_emails + _parse_csv_env("HIDDEN_USER_EMAILS")
+    excluded_ids = _parse_object_id_list(_parse_csv_env("HIDDEN_USER_IDS"))
+
+    user_filter = {}
+    if excluded_usernames:
+        user_filter["username"] = {"$nin": excluded_usernames}
+    if excluded_emails:
+        user_filter["email"] = {"$nin": excluded_emails}
+    if excluded_ids:
+        user_filter["_id"] = {"$nin": excluded_ids}
+
+    cursor = db.users.find(user_filter).sort("created_at", -1).limit(limit)
     users = await cursor.to_list(length=limit)
     
     return [
